@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { Link } from '@tanstack/react-router'
 import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query'
 import { useServerFn } from '@tanstack/react-start'
@@ -26,7 +26,6 @@ const menu = [
 ]
 
 export function Navbar() {
-  const [scrolled, setScrolled] = useState(false)
   const [open, setOpen] = useState(false)
   const queryClient = useQueryClient()
   const { data: user } = useQuery(meOptions)
@@ -40,22 +39,9 @@ export function Navbar() {
     },
   })
 
-  useEffect(() => {
-    const onScroll = () => setScrolled(window.scrollY > 24)
-    onScroll()
-    window.addEventListener('scroll', onScroll, { passive: true })
-    return () => window.removeEventListener('scroll', onScroll)
-  }, [])
-
   return (
     <header className="fixed inset-x-0 top-0 z-50 px-4 pt-4">
-      <div
-        className={`mx-auto flex h-16 max-w-7xl items-center justify-between gap-4 rounded-full px-4 transition-all duration-300 md:px-6 ${
-          scrolled
-            ? 'border border-border/70 bg-background/80 shadow-[0_1px_2px_rgba(0,0,0,0.04)] backdrop-blur-lg'
-            : 'border border-transparent bg-transparent'
-        }`}
-      >
+      <div className="mx-auto flex h-16 max-w-7xl items-center justify-between gap-4 rounded-full border border-transparent px-4 md:px-6">
         <Logo />
 
         <nav
