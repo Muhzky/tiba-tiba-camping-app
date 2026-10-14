@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="800" height="800" viewBox="0 0 800 800" role="img" aria-label="Placeholder produk">
+  <rect width="800" height="800" fill="#EFF2F5"/>
+  <g fill="none" stroke="#9CA3AF" stroke-width="6" stroke-linejoin="round" stroke-linecap="round">
+    <path d="M400 250 L540 520 H260 Z"/>
+    <path d="M400 250 L400 520"/>
+    <path d="M180 560 H620"/>
+    <path d="M240 600 H560"/>
+  </g>
+  <text x="400" y="700" font-family="DM Sans, sans-serif" font-size="28" fill="#6B7280" text-anchor="middle">TODO: aset resmi</text>
+</svg>

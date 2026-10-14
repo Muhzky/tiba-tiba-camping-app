@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1920" height="1080" viewBox="0 0 1920 1080" role="img" aria-label="Placeholder hero tenda di pegunungan">
+  <defs>
+    <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#FDF6EC"/>
+      <stop offset="60%" stop-color="#E8EEF4"/>
+      <stop offset="100%" stop-color="#D9E3EC"/>
+    </linearGradient>
+    <linearGradient id="ridge" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#8FA3B5"/>
+      <stop offset="100%" stop-color="#5E7183"/>
+    </linearGradient>
+  </defs>
+  <rect width="1920" height="1080" fill="url(#sky)"/>
+  <path d="M0 760 L340 470 L620 700 L900 380 L1240 720 L1560 500 L1920 780 V1080 H0 Z" fill="#AAB9C7"/>
+  <path d="M0 880 L420 640 L760 860 L1120 620 L1500 880 L1920 700 V1080 H0 Z" fill="url(#ridge)"/>
+  <g transform="translate(1180,760)">
+    <path d="M0 120 L110 -40 L220 120 Z" fill="#111111"/>
+    <path d="M110 -40 L110 120" stroke="#333" stroke-width="4"/>
+    <path d="M60 120 L60 60 L100 60 L100 120" fill="#EFF2F5"/>
+  </g>
+  <rect x="0" y="0" width="1920" height="1080" fill="none"/>
+  <text x="960" y="1040" font-family="DM Sans, sans-serif" font-size="30" fill="#5E7183" text-anchor="middle">TODO: aset resmi — foto tenda di pegunungan (hero-tent.webp)</text>
+</svg>

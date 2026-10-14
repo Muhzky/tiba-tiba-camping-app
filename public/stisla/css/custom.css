@@ -1,0 +1,25 @@
+/**
+ *
+ * You can write your CSS code here, DO NOT touch the default JavaScript file
+ * because it will make it harder for you to update.
+ * 
+ */
+
+/*# sourceMappingURL=custom.css.map */
+
+/* Backdrop sidebar mobile (khusus admin Tiba Tiba) */
+.admin-sidebar-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.4);
+  z-index: 879;
+  display: none;
+}
+@media (max-width: 575.98px) {
+  body:not(.sidebar-gone) .admin-sidebar-backdrop {
+    display: block;
+  }
+  body.sidebar-gone .admin-sidebar-backdrop {
+    display: none;
+  }
+}
