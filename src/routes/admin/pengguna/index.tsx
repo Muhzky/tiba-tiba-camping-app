@@ -3,6 +3,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useServerFn } from '@tanstack/react-start'
 import { useState } from 'react'
 import { toast } from 'sonner'
+import { KeyRound } from 'lucide-react'
 import {
   adminUsersOptions,
   resetUserPassword,
@@ -11,6 +12,14 @@ import {
 } from '#/server/fn/admin'
 import { meOptions } from '#/server/fn/auth'
 import { formatDateTime, rupiah } from '#/lib/format'
+import { AdminPage } from '#/components/admin/page'
+import { AdminCard } from '#/components/admin/card'
+import { AdminTable } from '#/components/admin/table'
+import { AdminPagination } from '#/components/admin/pagination'
+import { StatusBadge } from '#/components/admin/badge'
+import { Field, SearchInput } from '#/components/admin/field'
+import { AdminButton, buttonClass } from '#/components/admin/button'
+import { EmptyState } from '#/components/admin/empty'
 
 export const Route = createFileRoute('/admin/pengguna/')({
   loader: ({ context }) => context.queryClient.ensureQueryData(adminUsersOptions({ page: 1 })),
@@ -56,172 +65,162 @@ function PenggunaPage() {
     }
   }
 
-  const totalPages = data ? Math.max(1, Math.ceil(data.total / data.pageSize)) : 1
-
   return (
-    <>
-      <div className="section-header">
-        <h1>Pengguna</h1>
-      </div>
-      <div className="section-body">
-        <div className="card">
-          <div className="card-body">
-            <input
-              className="form-control mb-3"
-              style={{ maxWidth: 300 }}
-              placeholder="Cari nama…"
-              value={q}
-              onChange={(e) => {
-                setQ(e.target.value)
-                setPage(1)
-              }}
-            />
-            <div className="table-responsive">
-              <table className="table table-striped mb-0">
-                <thead>
-                  <tr>
-                    <th>Nama</th>
-                    <th>Email</th>
-                    <th>Peran</th>
-                    <th>Status</th>
-                    <th className="text-right">Pesanan</th>
-                    <th className="text-right">Total belanja</th>
-                    <th>Terdaftar</th>
-                    <th className="text-right">Aksi</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {(data?.rows ?? []).map((u) => (
-                    <tr key={u.id}>
-                      <td className="font-weight-bold">{u.name}</td>
-                      <td>{u.email}</td>
-                      <td>
-                        <select
-                          className="form-control form-control-sm"
-                          style={{ width: 120 }}
-                          value={u.role}
-                          disabled={busy || !isOwner || me.id === u.id}
-                          onChange={(e) =>
-                            void run(
-                              () => roleFn({ data: { userId: u.id, role: e.target.value as 'customer' | 'admin' | 'owner' } }),
-                              `Peran ${u.name} → ${ROLE_LABEL[e.target.value]}`,
-                            )
-                          }
-                        >
-                          <option value="customer">{ROLE_LABEL.customer}</option>
-                          <option value="admin">{ROLE_LABEL.admin}</option>
-                          <option value="owner">{ROLE_LABEL.owner}</option>
-                        </select>
-                      </td>
-                      <td>
-                        <span className={`badge ${u.isActive ? 'badge-success' : 'badge-danger'}`}>
-                          {u.isActive ? 'Aktif' : 'Nonaktif'}
-                        </span>
-                      </td>
-                      <td className="text-right">{u.orderCount}</td>
-                      <td className="text-right">{rupiah(u.totalSpent)}</td>
-                      <td>{formatDateTime(u.createdAt)}</td>
-                      <td className="text-right">
-                        <button
-                          type="button"
-                          className={`btn btn-sm ${u.isActive ? 'btn-danger' : 'btn-success'} mr-1`}
-                          disabled={busy || me?.id === u.id}
-                          onClick={() =>
-                            void run(
-                              () => activeFn({ data: { userId: u.id, isActive: !u.isActive } }),
-                              u.isActive ? `${u.name} dinonaktifkan` : `${u.name} diaktifkan`,
-                            )
-                          }
-                        >
-                          {u.isActive ? 'Nonaktifkan' : 'Aktifkan'}
-                        </button>
-                        <button
-                          type="button"
-                          className="btn btn-sm btn-secondary"
-                          disabled={busy}
-                          onClick={() => {
-                            setResetFor(resetFor === u.id ? null : u.id)
-                            setNewPassword('')
-                          }}
-                        >
-                          Reset password
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
-                  {resetFor ? (
-                    <tr>
-                      <td colSpan={8}>
-                        <form
-                          className="form-inline"
-                          onSubmit={(e) => {
-                            e.preventDefault()
-                            void run(async () => {
-                              await resetFn({ data: { userId: resetFor, password: newPassword } })
-                              setResetFor(null)
-                              setNewPassword('')
-                            }, 'Password direset.')
-                          }}
-                        >
-                          <input
-                            className="form-control form-control-sm mr-2"
-                            type="password"
-                            minLength={8}
-                            required
-                            placeholder="Password baru (min 8)"
-                            value={newPassword}
-                            onChange={(e) => setNewPassword(e.target.value)}
-                          />
-                          <button type="submit" className="btn btn-sm btn-primary mr-2">
-                            Simpan
-                          </button>
-                          <button
-                            type="button"
-                            className="btn btn-sm btn-secondary"
-                            onClick={() => setResetFor(null)}
-                          >
-                            Batal
-                          </button>
-                        </form>
-                      </td>
-                    </tr>
-                  ) : null}
-                  {(data?.rows ?? []).length === 0 ? (
-                    <tr>
-                      <td colSpan={8} className="text-center text-muted">
-                        Tidak ada pengguna.
-                      </td>
-                    </tr>
-                  ) : null}
-                </tbody>
-              </table>
-            </div>
-            <div className="d-flex justify-content-between align-items-center mt-3">
-              <span className="text-muted text-sm">
-                {data ? `${data.total} pengguna · halaman ${page}/${totalPages}` : ''}
-              </span>
-              <div>
-                <button
-                  type="button"
-                  className="btn btn-sm btn-secondary mr-1"
-                  disabled={page <= 1}
-                  onClick={() => setPage((p) => p - 1)}
-                >
-                  Sebelumnya
-                </button>
-                <button
-                  type="button"
-                  className="btn btn-sm btn-secondary"
-                  disabled={page >= totalPages}
-                  onClick={() => setPage((p) => p + 1)}
-                >
-                  Berikutnya
-                </button>
-              </div>
-            </div>
-          </div>
+    <AdminPage
+      title="Pengguna"
+      description="Kelola akun, peran, dan status pengguna toko."
+    >
+      <AdminCard bodyClassName="p-0">
+        <div className="p-4">
+          <SearchInput
+            label="pengguna"
+            placeholder="Cari nama…"
+            className="max-w-xs"
+            value={q}
+            onChange={(value) => {
+              setQ(value)
+              setPage(1)
+            }}
+          />
         </div>
-      </div>
-    </>
+
+        <AdminTable
+          head={
+            <>
+              <th scope="col">Nama</th>
+              <th scope="col">Email</th>
+              <th scope="col">Peran</th>
+              <th scope="col">Status</th>
+              <th scope="col" className="text-right">
+                Pesanan
+              </th>
+              <th scope="col" className="text-right">
+                Total belanja
+              </th>
+              <th scope="col">Terdaftar</th>
+              <th scope="col" className="text-right">
+                Aksi
+              </th>
+            </>
+          }
+        >
+          {(data?.rows ?? []).map((u) => (
+            <tr key={u.id}>
+              <td className="font-semibold">{u.name}</td>
+              <td>{u.email}</td>
+              <td>
+                <select
+                  className="select max-w-[7.5rem]"
+                  value={u.role}
+                  aria-label={`Peran ${u.name}`}
+                  disabled={busy || !isOwner || me.id === u.id}
+                  onChange={(e) =>
+                    void run(
+                      () => roleFn({ data: { userId: u.id, role: e.target.value as 'customer' | 'admin' | 'owner' } }),
+                      `Peran ${u.name} → ${ROLE_LABEL[e.target.value]}`,
+                    )
+                  }
+                >
+                  <option value="customer">{ROLE_LABEL.customer}</option>
+                  <option value="admin">{ROLE_LABEL.admin}</option>
+                  <option value="owner">{ROLE_LABEL.owner}</option>
+                </select>
+              </td>
+              <td>
+                <StatusBadge tone={u.isActive ? 'success' : 'danger'}>
+                  {u.isActive ? 'Aktif' : 'Nonaktif'}
+                </StatusBadge>
+              </td>
+              <td className="text-right">{u.orderCount}</td>
+              <td className="text-right">{rupiah(u.totalSpent)}</td>
+              <td>{formatDateTime(u.createdAt)}</td>
+              <td>
+                <div className="flex flex-wrap justify-end gap-1">
+                  <AdminButton
+                    size="sm"
+                    variant={u.isActive ? 'outline' : 'primary'}
+                    disabled={busy || me?.id === u.id}
+                    onClick={() =>
+                      void run(
+                        () => activeFn({ data: { userId: u.id, isActive: !u.isActive } }),
+                        u.isActive ? `${u.name} dinonaktifkan` : `${u.name} diaktifkan`,
+                      )
+                    }
+                  >
+                    {u.isActive ? 'Nonaktifkan' : 'Aktifkan'}
+                  </AdminButton>
+                  <AdminButton
+                    size="sm"
+                    variant="neutral"
+                    disabled={busy}
+                    onClick={() => {
+                      setResetFor(resetFor === u.id ? null : u.id)
+                      setNewPassword('')
+                    }}
+                  >
+                    <KeyRound aria-hidden="true" />
+                    Reset password
+                  </AdminButton>
+                </div>
+              </td>
+            </tr>
+          ))}
+          {resetFor ? (
+            <tr>
+              <td colSpan={8}>
+                <form
+                  className="flex flex-wrap items-end gap-2"
+                  onSubmit={(e) => {
+                    e.preventDefault()
+                    void run(async () => {
+                      await resetFn({ data: { userId: resetFor, password: newPassword } })
+                      setResetFor(null)
+                      setNewPassword('')
+                    }, 'Password direset.')
+                  }}
+                >
+                  <Field className="mb-0 flex-1" label="Password baru" htmlFor="reset-password">
+                    <input
+                      id="reset-password"
+                      className="input"
+                      type="password"
+                      minLength={8}
+                      required
+                      placeholder="min 8 karakter"
+                      value={newPassword}
+                      onChange={(e) => setNewPassword(e.target.value)}
+                    />
+                  </Field>
+                  <button
+                    type="submit"
+                    className={buttonClass({ variant: 'primary', size: 'sm' })}
+                  >
+                    Simpan
+                  </button>
+                  <AdminButton size="sm" variant="ghost" onClick={() => setResetFor(null)}>
+                    Batal
+                  </AdminButton>
+                </form>
+              </td>
+            </tr>
+          ) : null}
+          {(data?.rows ?? []).length === 0 ? (
+            <tr>
+              <td colSpan={8}>
+                <EmptyState icon={KeyRound} title="Tidak ada pengguna" text="Coba ubah kata kunci pencarian." />
+              </td>
+            </tr>
+          ) : null}
+        </AdminTable>
+
+        <AdminPagination
+          page={page}
+          pageSize={data?.pageSize ?? 20}
+          total={data?.total ?? 0}
+          unitLabel="pengguna"
+          onPage={setPage}
+        />
+      </AdminCard>
+    </AdminPage>
   )
 }

@@ -3,26 +3,22 @@ import { useQueryClient } from '@tanstack/react-query'
 import { useServerFn } from '@tanstack/react-start'
 import { useState } from 'react'
 import { toast } from 'sonner'
+import { ArrowLeft } from 'lucide-react'
 import { adminOrderDetailOptions, returnRental, updateOrderStatus } from '#/server/fn/admin'
 import { formatDateTime, rupiah } from '#/lib/format'
-import { ORDER_STATUS_LABEL, ORDER_TYPE_LABEL, orderStatusTone } from '#/lib/order-status'
+import { ORDER_STATUS_LABEL, ORDER_TYPE_LABEL } from '#/lib/order-status'
+import { AdminPage } from '#/components/admin/page'
+import { AdminCard } from '#/components/admin/card'
+import { AdminTable } from '#/components/admin/table'
+import { OrderStatusBadge } from '#/components/admin/badge'
+import { Field, SelectInput } from '#/components/admin/field'
+import { buttonClass } from '#/components/admin/button'
 
 export const Route = createFileRoute('/admin/transaksi/$id')({
   loader: ({ context, params }) =>
     context.queryClient.ensureQueryData(adminOrderDetailOptions(params.id)),
   component: TransaksiDetailPage,
 })
-
-const TONE_BADGE: Record<string, string> = {
-  pending: 'badge-warning',
-  success: 'badge-success',
-  info: 'badge-info',
-  destructive: 'badge-danger',
-}
-
-function badge(status: string) {
-  return `badge ${TONE_BADGE[orderStatusTone(status)] ?? 'badge-secondary'}`
-}
 
 function TransaksiDetailPage() {
   const { id } = Route.useParams()
@@ -100,295 +96,267 @@ function TransaksiDetailPage() {
     order.type === 'rent' && ['rented', 'overdue'].includes(order.status) && detail.returns.length === 0
 
   return (
-    <>
-      <div className="section-header d-flex justify-content-between align-items-center">
-        <h1>
-          {order.code} <span className={badge(order.status)}>{ORDER_STATUS_LABEL[order.status] ?? order.status}</span>
-        </h1>
-        <Link to="/admin/transaksi" className="btn btn-secondary">
-          ← Kembali
-        </Link>
-      </div>
-      <div className="section-body">
-        <div className="row">
-          <div className="col-lg-8">
-            <div className="card mb-3">
-              <div className="card-header">
-                <h4>Item</h4>
-              </div>
-              <div className="card-body table-responsive">
-                <table className="table table-sm mb-0">
-                  <thead>
-                    <tr>
-                      <th>Produk</th>
-                      <th>Serial</th>
-                      <th>Periode sewa</th>
-                      <th className="text-right">Qty</th>
-                      <th className="text-right">Harga satuan</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {detail.items.map((it) => (
-                      <tr key={it.id}>
-                        <td>{it.name}</td>
-                        <td>{it.rentalUnitSerial ?? '—'}</td>
-                        <td>
-                          {it.rentStart && it.rentEnd
-                            ? `${formatDateTime(it.rentStart)} → ${formatDateTime(it.rentEnd)} (${it.rentDays} hari)`
-                            : '—'}
-                        </td>
-                        <td className="text-right">{it.qty}</td>
-                        <td className="text-right">{rupiah(it.unitPrice)}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
+    <AdminPage
+      title={order.code}
+      description={`${ORDER_TYPE_LABEL[order.type]} · ${order.channel}`}
+      breadcrumb={[{ label: 'Transaksi', to: '/admin/transaksi' }, { label: order.code }]}
+      actions={
+        <div className="flex items-center gap-2">
+          <OrderStatusBadge status={order.status} />
+          <Link to="/admin/transaksi" className={buttonClass({ variant: 'ghost' })}>
+            <ArrowLeft aria-hidden="true" />
+            Kembali
+          </Link>
+        </div>
+      }
+    >
+      <div className="grid grid-cols-1 items-start gap-4 xl:grid-cols-12">
+        <div className="flex flex-col gap-4 xl:col-span-8">
+          <AdminCard title="Item" bodyClassName="p-0">
+            <AdminTable
+              head={
+                <>
+                  <th scope="col">Produk</th>
+                  <th scope="col">Serial</th>
+                  <th scope="col">Periode sewa</th>
+                  <th scope="col" className="text-right">
+                    Qty
+                  </th>
+                  <th scope="col" className="text-right">
+                    Harga satuan
+                  </th>
+                </>
+              }
+            >
+              {detail.items.map((it) => (
+                <tr key={it.id}>
+                  <td>{it.name}</td>
+                  <td>{it.rentalUnitSerial ?? '—'}</td>
+                  <td>
+                    {it.rentStart && it.rentEnd
+                      ? `${formatDateTime(it.rentStart)} → ${formatDateTime(it.rentEnd)} (${it.rentDays} hari)`
+                      : '—'}
+                  </td>
+                  <td className="text-right">{it.qty}</td>
+                  <td className="text-right">{rupiah(it.unitPrice)}</td>
+                </tr>
+              ))}
+            </AdminTable>
+          </AdminCard>
 
-            <div className="card mb-3">
-              <div className="card-header">
-                <h4>Riwayat status</h4>
-              </div>
-              <div className="card-body">
-                {detail.logs.length === 0 ? (
-                  <p className="text-muted mb-0">Belum ada riwayat.</p>
-                ) : (
-                  <ul className="list-unstyled mb-0">
-                    {detail.logs.map((log) => (
-                      <li key={log.id} className="mb-2">
-                        <span className={badge(log.toStatus)}>
-                          {log.fromStatus ? ORDER_STATUS_LABEL[log.fromStatus] : 'Mulai'} →{' '}
-                          {ORDER_STATUS_LABEL[log.toStatus]}
-                        </span>{' '}
-                        <small className="text-muted">{formatDateTime(log.createdAt)}</small>
-                        {log.note ? <div className="text-sm">{log.note}</div> : null}
-                      </li>
-                    ))}
-                  </ul>
-                )}
-              </div>
-            </div>
+          <AdminCard title="Riwayat status">
+            {detail.logs.length === 0 ? (
+              <p className="text-muted-foreground">Belum ada riwayat.</p>
+            ) : (
+              <ul className="flex flex-col gap-2">
+                {detail.logs.map((log) => (
+                  <li key={log.id} className="flex flex-wrap items-center gap-2">
+                    <OrderStatusBadge status={log.toStatus} />
+                    <span className="text-sm">
+                      {log.fromStatus ? ORDER_STATUS_LABEL[log.fromStatus] : 'Mulai'} →{' '}
+                      {ORDER_STATUS_LABEL[log.toStatus]}
+                    </span>
+                    <small className="text-muted-foreground">{formatDateTime(log.createdAt)}</small>
+                    {log.note ? <div className="w-full text-sm">{log.note}</div> : null}
+                  </li>
+                ))}
+              </ul>
+            )}
+          </AdminCard>
 
-            <div className="card mb-3">
-              <div className="card-header">
-                <h4>Pembayaran</h4>
-              </div>
-              <div className="card-body table-responsive">
-                {detail.payments.length === 0 ? (
-                  <p className="text-muted mb-0">Belum ada pembayaran.</p>
-                ) : (
-                  <table className="table table-sm mb-0">
-                    <thead>
-                      <tr>
-                        <th>Provider</th>
-                        <th className="text-right">Jumlah</th>
-                        <th>Status</th>
-                        <th>Signature OK</th>
-                        <th>Waktu</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {detail.payments.map((pay) => (
-                        <tr key={pay.id}>
-                          <td>{pay.provider}</td>
-                          <td className="text-right">{rupiah(pay.grossAmount)}</td>
-                          <td>{pay.status}</td>
-                          <td>{pay.signatureValid ? '✓' : '✗'}</td>
-                          <td>{formatDateTime(pay.createdAt)}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                )}
-              </div>
-            </div>
-
-            {canReturn ? (
-              <div className="card mb-3">
-                <div className="card-header">
-                  <h4>Pengembalian sewa</h4>
-                </div>
-                <div className="card-body">
-                  <div className="row">
-                    <div className="form-group col-md-2">
-                      <label>Telat (hari)</label>
-                      <input
-                        className="form-control"
-                        type="number"
-                        min={0}
-                        value={ret.lateDays}
-                        onChange={(e) => setRet({ ...ret, lateDays: e.target.value })}
-                      />
-                    </div>
-                    <div className="form-group col-md-2">
-                      <label>Denda telat</label>
-                      <input
-                        className="form-control"
-                        type="number"
-                        min={0}
-                        value={ret.lateFee}
-                        onChange={(e) => setRet({ ...ret, lateFee: e.target.value })}
-                      />
-                    </div>
-                    <div className="form-group col-md-2">
-                      <label>Denda rusak</label>
-                      <input
-                        className="form-control"
-                        type="number"
-                        min={0}
-                        value={ret.damageFee}
-                        onChange={(e) => setRet({ ...ret, damageFee: e.target.value })}
-                      />
-                    </div>
-                    <div className="form-group col-md-2">
-                      <label>Deposit dikembalikan</label>
-                      <input
-                        className="form-control"
-                        type="number"
-                        min={0}
-                        value={ret.depositRefund}
-                        onChange={(e) => setRet({ ...ret, depositRefund: e.target.value })}
-                      />
-                    </div>
-                    <div className="form-group col-md-4">
-                      <label>Kondisi saat kembali</label>
-                      <input
-                        className="form-control"
-                        value={ret.conditionNote}
-                        onChange={(e) => setRet({ ...ret, conditionNote: e.target.value })}
-                      />
-                    </div>
-                  </div>
-                  <button
-                    type="button"
-                    className="btn btn-primary"
-                    disabled={busy}
-                    onClick={() => void submitReturn()}
-                  >
-                    Catat pengembalian
-                  </button>
-                </div>
-              </div>
-            ) : null}
-          </div>
-
-          <div className="col-lg-4">
-            <div className="card mb-3">
-              <div className="card-header">
-                <h4>Ringkasan</h4>
-              </div>
-              <div className="card-body">
-                <dl className="mb-0">
-                  <div className="d-flex justify-content-between">
-                    <dt>Tipe</dt>
-                    <dd>
-                      {ORDER_TYPE_LABEL[order.type]} · {order.channel}
-                    </dd>
-                  </div>
-                  <div className="d-flex justify-content-between">
-                    <dt>Subtotal</dt>
-                    <dd>{rupiah(order.subtotal)}</dd>
-                  </div>
-                  <div className="d-flex justify-content-between">
-                    <dt>Diskon</dt>
-                    <dd>{rupiah(order.discount)}</dd>
-                  </div>
-                  <div className="d-flex justify-content-between">
-                    <dt>Ongkir</dt>
-                    <dd>{rupiah(order.shippingFee)}</dd>
-                  </div>
-                  <div className="d-flex justify-content-between">
-                    <dt>Deposit</dt>
-                    <dd>{rupiah(order.depositTotal)}</dd>
-                  </div>
-                  <div className="d-flex justify-content-between border-top pt-2 mt-2">
-                    <dt>Grand total</dt>
-                    <dd className="font-weight-bold">{rupiah(order.grandTotal)}</dd>
-                  </div>
-                </dl>
-                <hr />
-                <p className="mb-1">
-                  <strong>{detail.customer ?? 'Walk-in'}</strong>
-                  <br />
-                  {detail.customerEmail}
-                </p>
-                {order.shippingAddress ? (
-                  <p className="text-muted mb-1 text-sm">
-                    {Object.entries(order.shippingAddress)
-                      .map(([k, v]) => `${k}: ${v}`)
-                      .join(' · ')}
-                  </p>
-                ) : null}
-                {order.trackingNo ? (
-                  <p className="mb-1">
-                    Resi: <strong>{order.trackingNo}</strong>
-                  </p>
-                ) : null}
-                <p className="text-muted text-sm mb-0">
-                  Dibuat {formatDateTime(order.createdAt)}
-                  {order.paidAt ? ` · Dibayar ${formatDateTime(order.paidAt)}` : ''}
-                </p>
-              </div>
-            </div>
-
-            <div className="card mb-3">
-              <div className="card-header">
-                <h4>Ubah status</h4>
-              </div>
-              <div className="card-body">
-                {detail.allowed.length === 0 ? (
-                  <p className="text-muted mb-0">Tidak ada transisi yang tersedia.</p>
-                ) : (
+          <AdminCard title="Pembayaran" bodyClassName={detail.payments.length === 0 ? undefined : 'p-0'}>
+            {detail.payments.length === 0 ? (
+              <p className="text-muted-foreground">Belum ada pembayaran.</p>
+            ) : (
+              <AdminTable
+                head={
                   <>
-                    <div className="form-group">
-                      <label>Status baru</label>
-                      <select
-                        className="form-control"
-                        value={target}
-                        onChange={(e) => setTarget(e.target.value)}
-                      >
-                        <option value="">— pilih —</option>
-                        {detail.allowed.map((s) => (
-                          <option key={s} value={s}>
-                            {ORDER_STATUS_LABEL[s] ?? s}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                    {target === 'shipped' ? (
-                      <div className="form-group">
-                        <label>Nomor resi *</label>
-                        <input
-                          className="form-control"
-                          value={trackingNo}
-                          onChange={(e) => setTrackingNo(e.target.value)}
-                        />
-                      </div>
-                    ) : null}
-                    <div className="form-group">
-                      <label>Catatan</label>
-                      <input
-                        className="form-control"
-                        value={note}
-                        onChange={(e) => setNote(e.target.value)}
-                      />
-                    </div>
-                    <button
-                      type="button"
-                      className="btn btn-primary"
-                      disabled={busy || !target || (target === 'shipped' && !trackingNo.trim())}
-                      onClick={() => void applyStatus()}
-                    >
-                      Terapkan
-                    </button>
+                    <th scope="col">Provider</th>
+                    <th scope="col" className="text-right">
+                      Jumlah
+                    </th>
+                    <th scope="col">Status</th>
+                    <th scope="col">Signature OK</th>
+                    <th scope="col">Waktu</th>
                   </>
-                )}
+                }
+              >
+                {detail.payments.map((pay) => (
+                  <tr key={pay.id}>
+                    <td>{pay.provider}</td>
+                    <td className="text-right">{rupiah(pay.grossAmount)}</td>
+                    <td>{pay.status}</td>
+                    <td>{pay.signatureValid ? '✓' : '✗'}</td>
+                    <td>{formatDateTime(pay.createdAt)}</td>
+                  </tr>
+                ))}
+              </AdminTable>
+            )}
+          </AdminCard>
+
+          {canReturn ? (
+            <AdminCard title="Pengembalian sewa">
+              <div className="grid grid-cols-2 gap-3 md:grid-cols-6">
+                <Field label="Telat (hari)" className="md:col-span-1">
+                  <input
+                    className="input"
+                    type="number"
+                    min={0}
+                    value={ret.lateDays}
+                    onChange={(e) => setRet({ ...ret, lateDays: e.target.value })}
+                  />
+                </Field>
+                <Field label="Denda telat" className="md:col-span-1">
+                  <input
+                    className="input"
+                    type="number"
+                    min={0}
+                    value={ret.lateFee}
+                    onChange={(e) => setRet({ ...ret, lateFee: e.target.value })}
+                  />
+                </Field>
+                <Field label="Denda rusak" className="md:col-span-1">
+                  <input
+                    className="input"
+                    type="number"
+                    min={0}
+                    value={ret.damageFee}
+                    onChange={(e) => setRet({ ...ret, damageFee: e.target.value })}
+                  />
+                </Field>
+                <Field label="Deposit kembali" className="md:col-span-1">
+                  <input
+                    className="input"
+                    type="number"
+                    min={0}
+                    value={ret.depositRefund}
+                    onChange={(e) => setRet({ ...ret, depositRefund: e.target.value })}
+                  />
+                </Field>
+                <Field label="Kondisi saat kembali" className="col-span-2 md:col-span-2">
+                  <input
+                    className="input"
+                    value={ret.conditionNote}
+                    onChange={(e) => setRet({ ...ret, conditionNote: e.target.value })}
+                  />
+                </Field>
               </div>
-            </div>
-          </div>
+              <button
+                type="button"
+                className={buttonClass({ variant: 'primary' })}
+                disabled={busy}
+                onClick={() => void submitReturn()}
+              >
+                Catat pengembalian
+              </button>
+            </AdminCard>
+          ) : null}
+        </div>
+
+        <div className="flex flex-col gap-4 xl:col-span-4">
+          <AdminCard title="Ringkasan">
+            <dl className="flex flex-col gap-2">
+              <div className="flex items-center justify-between">
+                <dt className="text-muted-foreground">Tipe</dt>
+                <dd>
+                  {ORDER_TYPE_LABEL[order.type]} · {order.channel}
+                </dd>
+              </div>
+              <div className="flex items-center justify-between">
+                <dt className="text-muted-foreground">Subtotal</dt>
+                <dd>{rupiah(order.subtotal)}</dd>
+              </div>
+              <div className="flex items-center justify-between">
+                <dt className="text-muted-foreground">Diskon</dt>
+                <dd>{rupiah(order.discount)}</dd>
+              </div>
+              <div className="flex items-center justify-between">
+                <dt className="text-muted-foreground">Ongkir</dt>
+                <dd>{rupiah(order.shippingFee)}</dd>
+              </div>
+              <div className="flex items-center justify-between">
+                <dt className="text-muted-foreground">Deposit</dt>
+                <dd>{rupiah(order.depositTotal)}</dd>
+              </div>
+              <div className="mt-2 flex items-center justify-between border-t pt-2">
+                <dt className="font-semibold">Grand total</dt>
+                <dd className="font-semibold">{rupiah(order.grandTotal)}</dd>
+              </div>
+            </dl>
+            <hr className="my-3" />
+            <p className="mb-1">
+              <strong>{detail.customer ?? 'Walk-in'}</strong>
+              <br />
+              {detail.customerEmail}
+            </p>
+            {order.shippingAddress ? (
+              <p className="mb-1 text-sm text-muted-foreground">
+                {Object.entries(order.shippingAddress)
+                  .map(([k, v]) => `${k}: ${v}`)
+                  .join(' · ')}
+              </p>
+            ) : null}
+            {order.trackingNo ? (
+              <p className="mb-1">
+                Resi: <strong>{order.trackingNo}</strong>
+              </p>
+            ) : null}
+            <p className="text-sm text-muted-foreground">
+              Dibuat {formatDateTime(order.createdAt)}
+              {order.paidAt ? ` · Dibayar ${formatDateTime(order.paidAt)}` : ''}
+            </p>
+          </AdminCard>
+
+          <AdminCard title="Ubah status">
+            {detail.allowed.length === 0 ? (
+              <p className="text-muted-foreground">Tidak ada transisi yang tersedia.</p>
+            ) : (
+              <div className="flex flex-col gap-3">
+                <Field label="Status baru" htmlFor="order-status">
+                  <SelectInput
+                    ariaLabel="Status baru"
+                    value={target}
+                    onChange={setTarget}
+                    options={[
+                      { value: '', label: '— pilih —' },
+                      ...detail.allowed.map((s) => ({
+                        value: s,
+                        label: ORDER_STATUS_LABEL[s] ?? s,
+                      })),
+                    ]}
+                  />
+                </Field>
+                {target === 'shipped' ? (
+                  <Field label="Nomor resi" htmlFor="order-tracking" required>
+                    <input
+                      id="order-tracking"
+                      className="input"
+                      value={trackingNo}
+                      onChange={(e) => setTrackingNo(e.target.value)}
+                    />
+                  </Field>
+                ) : null}
+                <Field label="Catatan" htmlFor="order-note">
+                  <input
+                    id="order-note"
+                    className="input"
+                    value={note}
+                    onChange={(e) => setNote(e.target.value)}
+                  />
+                </Field>
+                <button
+                  type="button"
+                  className={buttonClass({ variant: 'primary', block: true })}
+                  disabled={busy || !target || (target === 'shipped' && !trackingNo.trim())}
+                  onClick={() => void applyStatus()}
+                >
+                  Terapkan
+                </button>
+              </div>
+            )}
+          </AdminCard>
         </div>
       </div>
-    </>
+    </AdminPage>
   )
 }

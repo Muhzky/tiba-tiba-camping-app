@@ -14,7 +14,7 @@ export const Route = createFileRoute('/(public)/masuk')({
   validateSearch: z.object({ redirect: z.string().optional() }),
   loader: async ({ context }) => {
     const user = await context.queryClient.ensureQueryData(meOptions)
-    if (user) throw redirect({ to: '/akun' })
+    if (user) throw redirect({ to: user.role === 'customer' ? '/akun' : '/admin' })
   },
   component: LoginPage,
 })
@@ -35,8 +35,11 @@ function LoginPage() {
         return
       }
       await queryClient.invalidateQueries({ queryKey: meOptions.queryKey })
+      // Arahkan admin/owner ke panel admin, customer ke akun (kecuali ada ?redirect=).
+      const me = await queryClient.fetchQuery(meOptions)
+      const fallback = me && me.role !== 'customer' ? '/admin' : '/akun'
       toast.success('Selamat datang kembali!')
-      await navigate({ to: search.redirect ?? '/akun' })
+      await navigate({ to: search.redirect ?? fallback })
     },
   })
 

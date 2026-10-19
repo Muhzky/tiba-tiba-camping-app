@@ -1,0 +1,262 @@
+/**
+ * Admin stylesheet — Stisla v3 (token-based), palet hitam–putih.
+ *
+ * Isolated: loaded ONLY by src/routes/admin/route.tsx, never together with the
+ * public Tailwind app.css (AGENTS.md §2.1 — no CSS conflict between admin & publik).
+ *
+ * Compile unit follows the official Stisla "build from source" recipe:
+ *   tailwindcss + @stisla/style theme + components + template layer below.
+ * Utilities are generated only from the admin sources (`source(none)` + @source).
+ * Interactive behaviour is React state (markup pakai class Stisla; tanpa @stisla/vanilla).
+ */
+
+@import 'tailwindcss' source(none);
+@import '@fontsource-variable/dm-sans';
+@import '@stisla/style/theme.css';
+
+@source '../routes/admin/**/*.{ts,tsx}';
+@source '../components/admin/**/*.{ts,tsx}';
+
+/* ── Hitam–putih design tokens ────────────────────────────────────────────
+ * Intent (success/warning/danger/info) sengaja dibiarkan default Stisla:
+ * hanya dipakai badge/alert status transaksi agar operator cepat membaca.
+ * Semua permukaan, aksen, dan tombol utama monokrom. */
+@theme {
+  /* surfaces */
+  --color-background: #f4f5f6;
+  --color-foreground: #0a0a0a;
+  --color-surface: #ffffff;
+  --color-surface-2: #eff2f5;
+  --color-surface-3: #e6e9ed;
+  --color-border: #e5e7eb;
+  --color-border-strong: #d1d5db;
+  --color-muted-foreground: #6b7280;
+
+  /* primary = hitam */
+  --color-primary: #000000;
+  --color-primary-foreground: #ffffff;
+  --color-primary-emphasis: #000000;
+
+  /* neutral chips & interactional states */
+  --color-neutral: #eff2f5;
+  --color-neutral-foreground: #0a0a0a;
+  --color-accent: #f3f4f6;
+  --color-accent-foreground: #0a0a0a;
+  --color-ring: #0a0a0a;
+
+  /* density compact (admin/dashboard) + bentuk & tipografi */
+  --spacing: 0.22rem;
+  --radius: 0.9rem;
+  --font-sans: 'DM Sans Variable', ui-sans-serif, system-ui, sans-serif;
+}
+
+@import '@stisla/style/components.css';
+
+/* ── Utilities khusus admin ─────────────────────────────────────────────── */
+@utility text-eyebrow {
+  font-size: 0.65rem;
+  font-weight: 500;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--color-muted-foreground);
+}
+
+/* ── App shell: sidebar kiri + kolom main ──────────────────────────────── */
+.admin-shell {
+  display: flex;
+  min-height: 100dvh;
+  gap: calc(var(--spacing) * 4);
+}
+.admin-shell > .sidebar {
+  flex-shrink: 0;
+}
+.admin-main {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Topbar (kerangka .navbar Stisla) */
+.admin-main > .navbar {
+  --navbar-bg: var(--color-surface);
+  --navbar-padding-inline: calc(var(--spacing) * 5);
+  --navbar-padding-block: 0;
+  --menu-shadow: var(--shadow-xl);
+  height: calc(var(--spacing) * 16);
+  flex-shrink: 0;
+  position: sticky;
+  top: 0;
+  z-index: 999;
+  background-color: var(--navbar-bg);
+  border-bottom: var(--st-border-width) solid var(--color-border);
+}
+.admin-main > .navbar .avatar {
+  --avatar-size: 1.75rem;
+}
+
+/* ── Sidebar hitam ─────────────────────────────────────────────────────── */
+.admin-sidebar {
+  --sidebar-bg: #0a0a0a;
+  --sidebar-color: #f5f5f5;
+  --sidebar-brand-color: #ffffff;
+  --sidebar-group-title-color: #6b7280;
+  --sidebar-button-color: #d1d5db;
+  --sidebar-button-icon-color: #8f97a3;
+  --sidebar-button-bg-hover: color-mix(in oklch, white 8%, transparent);
+  --sidebar-button-color-hover: #ffffff;
+  --sidebar-button-bg-active: #ffffff;
+  --sidebar-button-color-active: #0a0a0a;
+  --sidebar-button-icon-color-active: #0a0a0a;
+  --sidebar-submenu-border-color: color-mix(in oklch, white 14%, transparent);
+  --sidebar-padding-block: calc(var(--spacing) * 5);
+  background-color: var(--sidebar-bg);
+  color: var(--sidebar-color);
+}
+.admin-sidebar .badge--primary {
+  --badge-bg: color-mix(in oklch, white 16%, transparent);
+  --badge-color: #ffffff;
+}
+.admin-sidebar .separator {
+  --separator-color: color-mix(in oklch, white 14%, transparent);
+}
+
+@media (min-width: 64rem) {
+  .admin-sidebar {
+    position: sticky;
+    top: 0;
+    height: 100dvh;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
+}
+
+/* Drawer mobile: sidebar keluar dari alur, meluncur di atas backdrop */
+@media (max-width: 63.99rem) {
+  .admin-shell {
+    gap: 0;
+  }
+  .admin-shell > .admin-sidebar {
+    position: fixed;
+    inset-block: 0;
+    inset-inline-start: 0;
+    z-index: 1001;
+    height: 100dvh;
+    transform: translateX(-100%);
+    transition: transform 0.3s ease;
+    width: min(17rem, 84vw);
+  }
+  .admin-shell.is-sidebar-visible > .admin-sidebar {
+    transform: none;
+    box-shadow: var(--shadow-xl);
+  }
+  .admin-shell::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    z-index: 1000;
+    background: color-mix(in oklch, var(--color-foreground) 40%, transparent);
+    backdrop-filter: blur(6px);
+    opacity: 0;
+    visibility: hidden;
+    transition:
+      opacity 0.3s ease,
+      visibility 0.3s ease;
+  }
+  .admin-shell.is-sidebar-visible::before {
+    opacity: 1;
+    visibility: visible;
+  }
+}
+
+/* ── Content panel ─────────────────────────────────────────────────────── */
+.admin-content {
+  --admin-content-px: calc(var(--spacing) * 5);
+  --admin-content-py: calc(var(--spacing) * 6);
+  flex: 1;
+  overflow: clip;
+  background: var(--color-surface);
+  padding: var(--admin-content-py) var(--admin-content-px);
+  border-radius: var(--radius-2xl);
+  box-shadow:
+    0 8px 24px -4px color-mix(in oklch, var(--color-primary) 4%, transparent),
+    0 24px 56px -12px color-mix(in oklch, var(--color-primary) 9%, transparent);
+}
+@media (min-width: 48rem) {
+  .admin-content {
+    --admin-content-px: calc(var(--spacing) * 8);
+    --admin-content-py: calc(var(--spacing) * 8);
+    border-radius: var(--radius-2xl) 0 0 var(--radius-2xl);
+  }
+}
+@media (max-width: 47.99rem) {
+  .admin-content {
+    margin: calc(var(--spacing) * 3);
+  }
+}
+.admin-content__container {
+  width: 100%;
+  margin-inline: auto;
+  display: flex;
+  flex-direction: column;
+  gap: var(--page-section-gap, calc(var(--spacing) * 6));
+}
+@media (min-width: 1800px) {
+  .admin-content__container {
+    max-width: 87rem;
+  }
+}
+
+/* Kartu tanpa tabel: header kartu bersih (judul saja, tanpa garis) */
+.admin-content .card:not(:has(.table)) .card__header {
+  border-color: transparent;
+}
+.admin-content .card:not(:has(.table)) .card__header + .card__body {
+  padding-block-start: 0;
+}
+
+/* ── Stat cards (gaya overview) ────────────────────────────────────────── */
+.admin-stat {
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--spacing) * 1);
+}
+.admin-stat__value {
+  font-size: var(--text-3xl);
+  font-weight: 600;
+  line-height: 1.1;
+  letter-spacing: -0.02em;
+}
+.admin-stat__label {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  font-size: 0.65rem;
+  font-weight: 500;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--color-muted-foreground);
+}
+
+/* ── Chart ─────────────────────────────────────────────────────────────── */
+.admin-chart {
+  position: relative;
+  height: 260px;
+}
+
+/* ── Sticky action bar (halaman form) ──────────────────────────────────── */
+.admin-sticky-bar {
+  position: sticky;
+  bottom: 0;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  gap: calc(var(--spacing) * 3);
+  padding: calc(var(--spacing) * 3) var(--admin-content-px, calc(var(--spacing) * 5));
+  margin-inline: calc(var(--admin-content-px, calc(var(--spacing) * 5)) * -1);
+  margin-block-start: calc(var(--spacing) * 4);
+  margin-block-end: calc(var(--admin-content-py, calc(var(--spacing) * 6)) * -1);
+  background: color-mix(in oklch, var(--color-surface) 88%, transparent);
+  backdrop-filter: blur(8px);
+  border-top: var(--st-border-width) solid var(--color-border);
+}

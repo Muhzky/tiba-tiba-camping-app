@@ -3,6 +3,7 @@ import { useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useServerFn } from '@tanstack/react-start'
 import { flexRender, stockFeatures, useTable } from '@tanstack/react-table'
+import { Copy, PackageSearch, Pencil, Plus } from 'lucide-react'
 import {
   adminProductsOptions,
   duplicateProduct,
@@ -10,6 +11,14 @@ import {
 } from '#/server/fn/admin'
 import { imageUrl } from '#/server/fn/product'
 import { rupiah } from '#/lib/format'
+import { AdminPage } from '#/components/admin/page'
+import { AdminCard } from '#/components/admin/card'
+import { AdminTable } from '#/components/admin/table'
+import { AdminPagination } from '#/components/admin/pagination'
+import { StatusBadge } from '#/components/admin/badge'
+import { EmptyState } from '#/components/admin/empty'
+import { AdminButton, buttonClass } from '#/components/admin/button'
+import { SearchInput, SelectInput } from '#/components/admin/field'
 
 export const Route = createFileRoute('/admin/produk/')({
   loader: ({ context }) => context.queryClient.ensureQueryData(adminProductsOptions(PRODUCT_LIST_PARAMS)),
@@ -47,7 +56,7 @@ function ProdukListPage() {
     columns: [
       {
         id: 'gambar',
-        header: () => <th>Gambar</th>,
+        header: 'Gambar',
         cell: ({ row }) =>
           row.original.imageKey ? (
             <img
@@ -55,189 +64,202 @@ function ProdukListPage() {
               alt=""
               width={40}
               height={40}
-              style={{ objectFit: 'cover', borderRadius: 6 }}
+              className="rounded-md object-cover"
             />
           ) : (
-            <div style={{ width: 40, height: 40, borderRadius: 6, background: '#eff2f5' }} />
+            <div className="h-10 w-10 rounded-md bg-surface-2" />
           ),
       },
       {
         id: 'nama',
-        header: () => <th>Nama</th>,
+        header: 'Nama',
         cell: ({ row }) => (
           <>
-            <div className="font-weight-bold">{row.original.name}</div>
-            <div className="text-muted text-sm">{row.original.categoryName}</div>
+            <div className="font-semibold">{row.original.name}</div>
+            <div className="text-sm text-muted-foreground">{row.original.categoryName}</div>
           </>
         ),
       },
       {
         id: 'harga',
-        header: () => <th className="text-right">Harga jual</th>,
+        header: 'Harga jual',
+        meta: { className: 'text-right' },
         cell: ({ row }) => <span>{rupiah(row.original.salePrice)}</span>,
       },
       {
         id: 'sewa',
-        header: () => <th className="text-right">Sewa/hari</th>,
+        header: 'Sewa/hari',
+        meta: { className: 'text-right' },
         cell: ({ row }) => (
           <span>{row.original.rentPricePerDay ? rupiah(row.original.rentPricePerDay) : '—'}</span>
         ),
       },
       {
         id: 'varian',
-        header: () => <th className="text-right">Varian / Stok</th>,
-        cell: ({ row }) => <span>{row.original.variantCount} / {row.original.totalStock}</span>,
+        header: 'Varian / Stok',
+        meta: { className: 'text-right' },
+        cell: ({ row }) => (
+          <span className="font-medium">
+            {row.original.variantCount} / {row.original.totalStock}
+          </span>
+        ),
       },
       {
         id: 'status',
-        header: () => <th>Status</th>,
+        header: 'Status',
         cell: ({ row }) => (
-          <>
-            <span className={`badge ${row.original.isActive ? 'badge-success' : 'badge-secondary'}`}>
+          <div className="flex flex-wrap gap-1">
+            <StatusBadge tone={row.original.isActive ? 'success' : 'neutral'}>
               {row.original.isActive ? 'Aktif' : 'Nonaktif'}
-            </span>{' '}
-            {row.original.isPreorder ? <span className="badge badge-warning">PO</span> : null}{' '}
-            {row.original.isRentable ? <span className="badge badge-info">Sewa</span> : null}
-          </>
+            </StatusBadge>
+            {row.original.isPreorder ? <StatusBadge tone="warning">PO</StatusBadge> : null}
+            {row.original.isRentable ? <StatusBadge tone="info">Sewa</StatusBadge> : null}
+          </div>
         ),
       },
       {
         id: 'aksi',
-        header: () => <th className="text-right">Aksi</th>,
+        header: 'Aksi',
+        meta: { className: 'text-right' },
         cell: ({ row }) => (
-          <div className="text-right">
+          <div className="flex flex-wrap justify-end gap-1">
             <Link
               to="/admin/produk/form"
               search={{ id: row.original.id }}
-              className="btn btn-sm btn-primary mr-1"
+              className={buttonClass({ variant: 'primary', size: 'sm' })}
             >
+              <Pencil aria-hidden="true" />
               Edit
             </Link>
-            <button
-              type="button"
-              className="btn btn-sm btn-secondary mr-1"
+            <AdminButton
+              size="sm"
+              iconOnly
+              aria-label={`Duplikat ${row.original.name}`}
               disabled={dupMutation.isPending}
               onClick={() => dupMutation.mutate(row.original.id)}
             >
-              Duplikat
-            </button>
-            <button
-              type="button"
-              className={`btn btn-sm ${row.original.isActive ? 'btn-danger' : 'btn-success'}`}
+              <Copy aria-hidden="true" />
+            </AdminButton>
+            <AdminButton
+              size="sm"
+              variant="outline"
               disabled={toggleMutation.isPending}
               onClick={() =>
                 toggleMutation.mutate({ id: row.original.id, isActive: !row.original.isActive })
               }
             >
               {row.original.isActive ? 'Nonaktifkan' : 'Aktifkan'}
-            </button>
+            </AdminButton>
           </div>
         ),
       },
     ],
   })
 
-  const totalPages = data ? Math.max(1, Math.ceil(data.total / data.pageSize)) : 1
+  const kosong = !isLoading && (data?.rows.length ?? 0) === 0
 
   return (
-    <>
-      <div className="section-header d-flex justify-content-between align-items-center">
-        <h1>Kelola Produk</h1>
-        <Link to="/admin/produk/form" className="btn btn-primary">
-          <i className="fas fa-plus" /> Tambah Produk
+    <AdminPage
+      title="Kelola Produk"
+      description="Katalog jual, sewa, dan preorder — atur harga, stok, dan varian."
+      actions={
+        <Link to="/admin/produk/form" className={buttonClass({ variant: 'primary' })}>
+          <Plus aria-hidden="true" />
+          Tambah Produk
         </Link>
-      </div>
-      <div className="section-body">
-        <div className="card">
-          <div className="card-body">
-            <form
-              className="form-inline mb-3"
-              onSubmit={(e) => {
-                e.preventDefault()
+      }
+    >
+      <AdminCard
+        headerAlt
+        actions={
+          <>
+            <SearchInput
+              label="produk"
+              placeholder="Cari produk…"
+              value={q}
+              onChange={(value) => {
+                setQ(value)
                 setPage(1)
               }}
-            >
-              <input
-                className="form-control mr-2 mb-2"
-                style={{ maxWidth: 260 }}
-                placeholder="Cari produk…"
-                value={q}
-                onChange={(e) => {
-                  setQ(e.target.value)
-                  setPage(1)
-                }}
-              />
-              <select
-                className="form-control mr-2 mb-2"
-                value={status}
-                onChange={(e) => {
-                  setStatus(e.target.value as typeof status)
-                  setPage(1)
-                }}
-              >
-                <option value="all">Semua status</option>
-                <option value="active">Aktif</option>
-                <option value="inactive">Nonaktif</option>
-              </select>
-            </form>
-
-            <div className="table-responsive">
-              <table className="table table-striped mb-0">
-                <thead>
-                  {table.getHeaderGroups().map((hg) => (
-                    <tr key={hg.id}>
-                      {hg.headers.map((h) => (
-                        <th key={h.id}>{flexRender(h.column.columnDef.header, h.getContext())}</th>
-                      ))}
-                    </tr>
-                  ))}
-                </thead>
-                <tbody>
-                  {table.getRowModel().rows.map((row) => (
-                    <tr key={row.id}>
-                      {row.getVisibleCells().map((cell) => (
-                        <td key={cell.id}>
-                          {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                        </td>
-                      ))}
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-
-            {isLoading ? (
-              <p className="text-muted text-center py-3">Memuat…</p>
-            ) : data?.rows.length === 0 ? (
-              <p className="text-muted text-center py-3">Tidak ada produk.</p>
-            ) : null}
-
-            <div className="d-flex justify-content-between align-items-center mt-3">
-              <span className="text-muted text-sm">
-                {data ? `${data.total} produk · halaman ${page}/${totalPages}` : ''}
-              </span>
-              <div>
-                <button
-                  type="button"
-                  className="btn btn-sm btn-secondary mr-1"
-                  disabled={page <= 1}
-                  onClick={() => setPage((p) => p - 1)}
-                >
-                  Sebelumnya
-                </button>
-                <button
-                  type="button"
-                  className="btn btn-sm btn-secondary"
-                  disabled={page >= totalPages}
-                  onClick={() => setPage((p) => p + 1)}
-                >
-                  Berikutnya
-                </button>
-              </div>
-            </div>
+              className="w-full md:w-64"
+            />
+            <SelectInput
+              ariaLabel="Filter status"
+              value={status}
+              onChange={(value) => {
+                setStatus(value as typeof status)
+                setPage(1)
+              }}
+              className="md:w-44"
+              options={[
+                { value: 'all', label: 'Semua status' },
+                { value: 'active', label: 'Aktif' },
+                { value: 'inactive', label: 'Nonaktif' },
+              ]}
+            />
+          </>
+        }
+        bodyClassName="p-0"
+        footer={
+          <AdminPagination
+            page={page}
+            pageSize={data?.pageSize ?? 10}
+            total={data?.total ?? 0}
+            unitLabel="produk"
+            onPage={setPage}
+            disabled={isLoading}
+          />
+        }
+      >
+        {kosong ? (
+          <div className="px-4 py-6">
+            <EmptyState
+              icon={PackageSearch}
+              title="Tidak ada produk"
+              text={
+                q || status !== 'all'
+                  ? 'Coba ubah kata kunci atau filter status.'
+                  : 'Mulai dengan menambahkan produk pertama Anda.'
+              }
+              action={
+                !q && status === 'all' ? (
+                  <Link to="/admin/produk/form" className={buttonClass({ variant: 'primary' })}>
+                    <Plus aria-hidden="true" />
+                    Tambah Produk
+                  </Link>
+                ) : undefined
+              }
+            />
           </div>
-        </div>
-      </div>
-    </>
+        ) : (
+          <AdminTable
+            head={table.getHeaderGroups().map((hg) =>
+              hg.headers.map((h) => (
+                <th
+                  key={h.id}
+                  scope="col"
+                  className={h.column.columnDef.meta?.className}
+                >
+                  {flexRender(h.column.columnDef.header, h.getContext())}
+                </th>
+              )),
+            )}
+          >
+            {table.getRowModel().rows.map((row) => (
+              <tr key={row.id}>
+                {row.getVisibleCells().map((cell) => (
+                  <td
+                    key={cell.id}
+                    className={cell.column.columnDef.meta?.className}
+                  >
+                    {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                  </td>
+                ))}
+              </tr>
+            ))}
+          </AdminTable>
+        )}
+      </AdminCard>
+    </AdminPage>
   )
 }

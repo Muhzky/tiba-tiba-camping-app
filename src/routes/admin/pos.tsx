@@ -3,9 +3,17 @@ import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useServerFn } from '@tanstack/react-start'
 import { useState } from 'react'
 import { toast } from 'sonner'
+import { Minus, Plus, Search, X } from 'lucide-react'
 import { createPosOrder, posVariantsOptions } from '#/server/fn/admin'
 import { rentalDays } from '#/lib/order-totals'
 import { rupiah } from '#/lib/format'
+import { AdminPage } from '#/components/admin/page'
+import { AdminCard } from '#/components/admin/card'
+import { AdminTable } from '#/components/admin/table'
+import { StatusBadge } from '#/components/admin/badge'
+import { Field, SearchInput, SelectInput } from '#/components/admin/field'
+import { AdminButton, buttonClass } from '#/components/admin/button'
+import { cn } from '#/lib/utils'
 
 export const Route = createFileRoute('/admin/pos')({
   component: PosPage,
@@ -113,305 +121,298 @@ function PosPage() {
   }
 
   return (
-    <>
-      <div className="section-header">
-        <h1>POS Kasir</h1>
-      </div>
-      <div className="section-body">
-        <div className="row">
-          <div className="col-lg-7">
-            <div className="card mb-3">
-              <div className="card-header">
-                <h4>Cari produk</h4>
-              </div>
-              <div className="card-body">
-                <form
-                  className="form-inline mb-3"
-                  onSubmit={(e) => {
-                    e.preventDefault()
-                    setSearch(q)
-                  }}
-                >
-                  <input
-                    className="form-control mr-2"
-                    style={{ maxWidth: 280 }}
-                    placeholder="Nama produk…"
-                    value={q}
-                    onChange={(e) => setQ(e.target.value)}
-                  />
-                  <button type="submit" className="btn btn-secondary">
-                    Cari
-                  </button>
-                </form>
-                <div className="table-responsive" style={{ maxHeight: 340, overflowY: 'auto' }}>
-                  <table className="table table-sm mb-0">
-                    <thead>
-                      <tr>
-                        <th>Produk</th>
-                        <th>SKU</th>
-                        <th className="text-right">Harga</th>
-                        <th className="text-right">Stok</th>
-                        <th />
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {(variants ?? []).map((v) => (
-                        <tr key={v.variantId}>
-                          <td>
-                            {v.name}
-                            {mode === 'rent' && v.isRentable && v.rentPricePerDay ? (
-                              <span className="badge badge-info ml-1">
-                                {rupiah(v.rentPricePerDay)}/hari
-                              </span>
-                            ) : null}
-                          </td>
-                          <td>
-                            <code>{v.sku}</code>
-                          </td>
-                          <td className="text-right">
-                            {mode === 'buy' ? (
-                              rupiah(Math.round(v.salePrice - (v.salePrice * v.discountPercent) / 100))
-                            ) : v.rentPricePerDay ? (
-                              rupiah(v.rentPricePerDay)
-                            ) : (
-                              '—'
-                            )}
-                          </td>
-                          <td className="text-right">{v.stock}</td>
-                          <td className="text-right">
-                            <button
-                              type="button"
-                              className="btn btn-sm btn-primary"
-                              disabled={
-                                busy ||
-                                (mode === 'rent' && (!v.isRentable || !v.rentPricePerDay)) ||
-                                (mode === 'buy' && v.stock < 1)
-                              }
-                              onClick={() => addLine(v)}
-                            >
-                              Tambah
-                            </button>
-                          </td>
-                        </tr>
-                      ))}
-                      {(variants ?? []).length === 0 ? (
-                        <tr>
-                          <td colSpan={5} className="text-center text-muted">
-                            Ketik nama lalu tekan Cari.
-                          </td>
-                        </tr>
-                      ) : null}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
+    <AdminPage
+      title="POS Kasir"
+      description="Transaksi cepat di toko: beli atau sewa, bayar tunai atau QRIS."
+    >
+      <div className="grid grid-cols-1 items-start gap-4 xl:grid-cols-12">
+        <div className="xl:col-span-7">
+          <AdminCard title="Cari produk">
+            <form
+              className="mb-3 flex flex-wrap items-center gap-2"
+              onSubmit={(e) => {
+                e.preventDefault()
+                setSearch(q)
+              }}
+            >
+              <SearchInput
+                label="produk"
+                placeholder="Nama produk…"
+                className="w-full sm:w-64"
+                value={q}
+                onChange={setQ}
+              />
+              <button type="submit" className={buttonClass({ variant: 'neutral' })}>
+                <Search aria-hidden="true" />
+                Cari
+              </button>
+            </form>
+            <div className="max-h-[340px] overflow-y-auto">
+              <AdminTable
+                head={
+                  <>
+                    <th scope="col">Produk</th>
+                    <th scope="col">SKU</th>
+                    <th scope="col" className="text-right">
+                      Harga
+                    </th>
+                    <th scope="col" className="text-right">
+                      Stok
+                    </th>
+                    <th scope="col" />
+                  </>
+                }
+              >
+                {(variants ?? []).map((v) => (
+                  <tr key={v.variantId}>
+                    <td>
+                      <div className="flex flex-wrap items-center gap-1">
+                        {v.name}
+                        {mode === 'rent' && v.isRentable && v.rentPricePerDay ? (
+                          <StatusBadge tone="info">{rupiah(v.rentPricePerDay)}/hari</StatusBadge>
+                        ) : null}
+                      </div>
+                    </td>
+                    <td>
+                      <code>{v.sku}</code>
+                    </td>
+                    <td className="text-right">
+                      {mode === 'buy'
+                        ? rupiah(Math.round(v.salePrice - (v.salePrice * v.discountPercent) / 100))
+                        : v.rentPricePerDay
+                          ? rupiah(v.rentPricePerDay)
+                          : '—'}
+                    </td>
+                    <td className="text-right">{v.stock}</td>
+                    <td className="text-right">
+                      <AdminButton
+                        size="sm"
+                        variant="primary"
+                        disabled={
+                          busy ||
+                          (mode === 'rent' && (!v.isRentable || !v.rentPricePerDay)) ||
+                          (mode === 'buy' && v.stock < 1)
+                        }
+                        onClick={() => addLine(v)}
+                      >
+                        Tambah
+                      </AdminButton>
+                    </td>
+                  </tr>
+                ))}
+                {(variants ?? []).length === 0 ? (
+                  <tr>
+                    <td colSpan={5} className="text-center text-muted-foreground">
+                      Ketik nama lalu tekan Cari.
+                    </td>
+                  </tr>
+                ) : null}
+              </AdminTable>
             </div>
-          </div>
+          </AdminCard>
+        </div>
 
-          <div className="col-lg-5">
-            <div className="card mb-3">
-              <div className="card-header">
-                <h4>Keranjang</h4>
+        <div className="xl:col-span-5">
+          <AdminCard title="Keranjang">
+            <div className="mb-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <fieldset>
+                <legend className="field__label">Mode</legend>
+                <div className="flex gap-4">
+                  <label className="flex items-center gap-2">
+                    <input
+                      type="radio"
+                      name="pos-mode"
+                      className="radio"
+                      checked={mode === 'buy'}
+                      onChange={() => setMode('buy')}
+                    />
+                    Beli
+                  </label>
+                  <label className="flex items-center gap-2">
+                    <input
+                      type="radio"
+                      name="pos-mode"
+                      className="radio"
+                      checked={mode === 'rent'}
+                      onChange={() => setMode('rent')}
+                    />
+                    Sewa
+                  </label>
+                </div>
+              </fieldset>
+              <Field label="Bayar" htmlFor="pos-payment">
+                <SelectInput
+                  ariaLabel="Metode pembayaran"
+                  value={paymentMethod}
+                  onChange={(value) => setPaymentMethod(value as typeof paymentMethod)}
+                  options={[
+                    { value: 'cash', label: 'Tunai' },
+                    { value: 'qris', label: 'QRIS' },
+                  ]}
+                />
+              </Field>
+            </div>
+
+            <Field label="Nama pelanggan (opsional)" htmlFor="pos-customer" className="mb-3">
+              <input
+                id="pos-customer"
+                className="input"
+                value={customerName}
+                onChange={(e) => setCustomerName(e.target.value)}
+              />
+            </Field>
+
+            {mode === 'rent' ? (
+              <div className="mb-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
+                <Field label="Mulai" htmlFor="pos-rent-start">
+                  <input
+                    id="pos-rent-start"
+                    className="input"
+                    type="datetime-local"
+                    value={rentStart}
+                    onChange={(e) => setRentStart(e.target.value)}
+                  />
+                </Field>
+                <Field label="Selesai" htmlFor="pos-rent-end">
+                  <input
+                    id="pos-rent-end"
+                    className="input"
+                    type="datetime-local"
+                    value={rentEnd}
+                    onChange={(e) => setRentEnd(e.target.value)}
+                  />
+                </Field>
               </div>
-              <div className="card-body">
-                <div className="form-row mb-3">
-                  <div className="col-6">
-                    <label className="d-block">Mode</label>
-                    <div className="form-check form-check-inline">
-                      <label className="form-check-label">
-                        <input
-                          className="form-check-input mr-1"
-                          type="radio"
-                          checked={mode === 'buy'}
-                          onChange={() => setMode('buy')}
-                        />
-                        Beli
-                      </label>
+            ) : null}
+
+            <AdminTable
+              head={
+                <>
+                  <th scope="col">Item</th>
+                  <th scope="col" className="w-[100px]">
+                    Qty
+                  </th>
+                  <th scope="col" className="text-right">
+                    Subtotal
+                  </th>
+                  <th scope="col" />
+                </>
+              }
+            >
+              {lines.map((l, i) => (
+                <tr key={l.variantId}>
+                  <td>
+                    {l.name}
+                    <br />
+                    <small className="text-muted-foreground">{l.sku}</small>
+                  </td>
+                  <td>
+                    <div className="input-group">
+                      <button
+                        type="button"
+                        className="button button--neutral button--icon-only"
+                        aria-label={`Kurangi ${l.name}`}
+                        onClick={() =>
+                          setLines((rows) =>
+                            rows.map((r, j) =>
+                              j === i ? { ...r, qty: Math.max(1, r.qty - 1) } : r,
+                            ),
+                          )
+                        }
+                      >
+                        <Minus aria-hidden="true" />
+                      </button>
+                      <input className="input text-center" readOnly value={l.qty} aria-label={`Qty ${l.name}`} />
+                      <button
+                        type="button"
+                        className="button button--neutral button--icon-only"
+                        aria-label={`Tambah ${l.name}`}
+                        onClick={() =>
+                          setLines((rows) =>
+                            rows.map((r, j) =>
+                              j === i
+                                ? { ...r, qty: mode === 'buy' ? Math.min(r.stock, r.qty + 1) : r.qty + 1 }
+                                : r,
+                            ),
+                          )
+                        }
+                      >
+                        <Plus aria-hidden="true" />
+                      </button>
                     </div>
-                    <div className="form-check form-check-inline">
-                      <label className="form-check-label">
-                        <input
-                          className="form-check-input mr-1"
-                          type="radio"
-                          checked={mode === 'rent'}
-                          onChange={() => setMode('rent')}
-                        />
-                        Sewa
-                      </label>
-                    </div>
-                  </div>
-                  <div className="col-6">
-                    <label>Bayar</label>
-                    <select
-                      className="form-control"
-                      value={paymentMethod}
-                      onChange={(e) => setPaymentMethod(e.target.value as typeof paymentMethod)}
+                  </td>
+                  <td className="text-right">
+                    {rupiah(
+                      mode === 'buy'
+                        ? unitBuy(l) * l.qty
+                        : (l.rentPricePerDay ?? 0) * days * l.qty,
+                    )}
+                  </td>
+                  <td className="text-right">
+                    <AdminButton
+                      size="sm"
+                      variant="ghost"
+                      iconOnly
+                      aria-label={`Hapus ${l.name}`}
+                      onClick={() => setLines((rows) => rows.filter((r) => r.variantId !== l.variantId))}
                     >
-                      <option value="cash">Tunai</option>
-                      <option value="qris">QRIS</option>
-                    </select>
-                  </div>
+                      <X aria-hidden="true" />
+                    </AdminButton>
+                  </td>
+                </tr>
+              ))}
+              {lines.length === 0 ? (
+                <tr>
+                  <td colSpan={4} className="text-center text-muted-foreground">
+                    Belum ada item.
+                  </td>
+                </tr>
+              ) : null}
+            </AdminTable>
+
+            <dl className="mb-3 mt-3 flex flex-col gap-2">
+              {mode === 'rent' ? (
+                <div className="flex items-center justify-between">
+                  <dt className="text-muted-foreground">Durasi</dt>
+                  <dd>{days} hari</dd>
                 </div>
-
-                <div className="form-group">
-                  <label>Nama pelanggan (opsional)</label>
-                  <input
-                    className="form-control"
-                    value={customerName}
-                    onChange={(e) => setCustomerName(e.target.value)}
-                  />
-                </div>
-
-                {mode === 'rent' ? (
-                  <div className="row">
-                    <div className="form-group col-6">
-                      <label>Mulai</label>
-                      <input
-                        className="form-control"
-                        type="datetime-local"
-                        value={rentStart}
-                        onChange={(e) => setRentStart(e.target.value)}
-                      />
-                    </div>
-                    <div className="form-group col-6">
-                      <label>Selesai</label>
-                      <input
-                        className="form-control"
-                        type="datetime-local"
-                        value={rentEnd}
-                        onChange={(e) => setRentEnd(e.target.value)}
-                      />
-                    </div>
-                  </div>
-                ) : null}
-
-                <table className="table table-sm">
-                  <thead>
-                    <tr>
-                      <th>Item</th>
-                      <th style={{ width: 100 }}>Qty</th>
-                      <th className="text-right">Subtotal</th>
-                      <th />
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {lines.map((l, i) => (
-                      <tr key={l.variantId}>
-                        <td>
-                          {l.name}
-                          <br />
-                          <small className="text-muted">{l.sku}</small>
-                        </td>
-                        <td>
-                          <div className="input-group input-group-sm">
-                            <div className="input-group-prepend">
-                              <button
-                                type="button"
-                                className="btn btn-outline-secondary"
-                                onClick={() =>
-                                  setLines((rows) =>
-                                    rows.map((r, j) =>
-                                      j === i ? { ...r, qty: Math.max(1, r.qty - 1) } : r,
-                                    ),
-                                  )
-                                }
-                              >
-                                −
-                              </button>
-                            </div>
-                            <input className="form-control text-center" readOnly value={l.qty} />
-                            <div className="input-group-append">
-                              <button
-                                type="button"
-                                className="btn btn-outline-secondary"
-                                onClick={() =>
-                                  setLines((rows) =>
-                                    rows.map((r, j) =>
-                                      j === i
-                                        ? { ...r, qty: mode === 'buy' ? Math.min(r.stock, r.qty + 1) : r.qty + 1 }
-                                        : r,
-                                    ),
-                                  )
-                                }
-                              >
-                                +
-                              </button>
-                            </div>
-                          </div>
-                        </td>
-                        <td className="text-right">
-                          {rupiah(
-                            mode === 'buy'
-                              ? unitBuy(l) * l.qty
-                              : (l.rentPricePerDay ?? 0) * days * l.qty,
-                          )}
-                        </td>
-                        <td className="text-right">
-                          <button
-                            type="button"
-                            className="btn btn-sm btn-link text-danger p-0"
-                            onClick={() => setLines((rows) => rows.filter((r) => r.variantId !== l.variantId))}
-                          >
-                            ×
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
-                    {lines.length === 0 ? (
-                      <tr>
-                        <td colSpan={4} className="text-center text-muted">
-                          Belum ada item.
-                        </td>
-                      </tr>
-                    ) : null}
-                  </tbody>
-                </table>
-
-                <dl className="mb-3">
-                  {mode === 'rent' ? (
-                    <div className="d-flex justify-content-between">
-                      <dt>Durasi</dt>
-                      <dd>{days} hari</dd>
-                    </div>
-                  ) : null}
-                  <div className="d-flex justify-content-between">
-                    <dt>Subtotal</dt>
-                    <dd>{rupiah(subtotal)}</dd>
-                  </div>
-                  {mode === 'rent' ? (
-                    <div className="d-flex justify-content-between">
-                      <dt>Deposit (dikembalikan)</dt>
-                      <dd>{rupiah(deposit)}</dd>
-                    </div>
-                  ) : null}
-                  <div className="d-flex justify-content-between border-top pt-2 mt-2">
-                    <dt>TOTAL</dt>
-                    <dd className="font-weight-bold">{rupiah(grandTotal)}</dd>
-                  </div>
-                </dl>
-
-                <button
-                  type="button"
-                  className="btn btn-primary btn-block"
-                  disabled={busy || lines.length === 0}
-                  onClick={() => void submit()}
-                >
-                  {busy ? 'Menyimpan…' : 'Bayar & simpan'}
-                </button>
-
-                {doneId ? (
-                  <p className="mt-3 mb-0">
-                    Tersimpan.{' '}
-                    <Link to="/admin/transaksi/$id" params={{ id: doneId }}>
-                      Lihat transaksi
-                    </Link>
-                  </p>
-                ) : null}
+              ) : null}
+              <div className="flex items-center justify-between">
+                <dt className="text-muted-foreground">Subtotal</dt>
+                <dd>{rupiah(subtotal)}</dd>
               </div>
-            </div>
-          </div>
+              {mode === 'rent' ? (
+                <div className="flex items-center justify-between">
+                  <dt className="text-muted-foreground">Deposit (dikembalikan)</dt>
+                  <dd>{rupiah(deposit)}</dd>
+                </div>
+              ) : null}
+              <div className="mt-2 flex items-center justify-between border-t pt-2">
+                <dt className="font-semibold">TOTAL</dt>
+                <dd className="font-semibold">{rupiah(grandTotal)}</dd>
+              </div>
+            </dl>
+
+            <button
+              type="button"
+              className={cn(buttonClass({ variant: 'primary', block: true }))}
+              disabled={busy || lines.length === 0}
+              onClick={() => void submit()}
+            >
+              {busy ? 'Menyimpan…' : 'Bayar & simpan'}
+            </button>
+
+            {doneId ? (
+              <p className="mt-3">
+                Tersimpan.{' '}
+                <Link to="/admin/transaksi/$id" params={{ id: doneId }}>
+                  Lihat transaksi
+                </Link>
+              </p>
+            ) : null}
+          </AdminCard>
         </div>
       </div>
-    </>
+    </AdminPage>
   )
 }

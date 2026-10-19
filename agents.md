@@ -37,7 +37,7 @@
 |---|---|
 | Framework | **TanStack Start** (React, SSR, server functions) + **TypeScript strict** |
 | Styling publik | **Tailwind CSS** + **shadcn/ui** (dikustom mengikuti referensi desain) |
-| Admin UI | **Stisla** (Bootstrap-based), **dipisah total** dari layout publik (lihat 2.1) |
+| Admin UI | **Stisla v3** (token-based, dibangun dari source via Tailwind v4), **dipisah total** dari layout publik (lihat 2.1) |
 | Data fetching | **TanStack Query** |
 | Form | **TanStack Form** + validasi **Zod** |
 | Tabel | **TanStack Table** (dibungkus komponen tabel bergaya Stisla di admin) |
@@ -50,13 +50,14 @@
 | Mata uang | IDR, format `Rp 220.000` |
 | Timezone | `Asia/Jakarta` (simpan UTC di DB) |
 
-### 2.1 Strategi Stisla + Tailwind (penting)
-Stisla memakai Bootstrap yang bentrok dengan reset Tailwind. Aturan isolasi:
+### 2.1 Strategi Stisla v3 + Tailwind (penting)
+Stisla v3 sudah **token-based** (bukan Bootstrap): tema & komponen dikompilasi dari npm `@stisla/style` lewat Tailwind v4. Aturan isolasi:
 1. Route publik: `src/routes/(public)/**` → memakai `app.css` (Tailwind + shadcn).
-2. Route admin: `src/routes/admin/**` → memakai layout sendiri yang memuat **CSS/JS Stisla** hanya di route ini (via `head().links` pada route `admin`), **tidak** memuat Tailwind global.
-3. Jangan mencampur class Bootstrap dan Tailwind dalam satu halaman.
-4. Komponen admin (tabel, form, modal) ditulis dengan markup/class Stisla; logika tetap TanStack Table/Form/Query.
-5. Aset Stisla ditaruh di `public/stisla/` (atau dipasang via npm) dan tidak diimpor dari kode publik.
+2. Route admin: `src/routes/admin/**` → memakai `src/styles/admin.css` (compile unit sendiri: `@import 'tailwindcss' source(none)` + `@source` khusus sumber admin + `@stisla/style`), dimuat **hanya** di route ini (via `head().links` pada route `admin`).
+3. Admin **self-contained**: `admin.css` meng-generate utility hanya dari sumber admin; jangan andalkan utility dari stylesheet publik di halaman admin, dan sebaliknya.
+4. Komponen admin (tabel, form, dialog) memakai **class BEM Stisla v3**; logika interaktif (drawer, dropdown, tab, dialog) = **state React** — **tanpa `@stisla/vanilla`** dan tanpa Bootstrap JS.
+5. Palet admin **hitam–putih** (token di `admin.css` `@theme`); warna intent (success/warning/danger/info) hanya untuk **badge status**.
+6. Catatan Tailwind v4: di CSS custom jangan pakai `var(--spacing(N))` (function compile-time yang tak terevaluasi di luar utility) — tulis `calc(var(--spacing) * N)`.
 
 ---
 
@@ -64,12 +65,13 @@ Stisla memakai Bootstrap yang bentrok dengan reset Tailwind. Aturan isolasi:
 
 ```
 .
-├── AGENTS.md
+├── agents.md
 ├── drizzle/                     # migrasi SQL
 ├── public/
-│   ├── stisla/                  # aset Stisla (khusus admin)
 │   └── images/hero-tent.webp
 ├── src/
+│   ├── styles/
+│   │   └── admin.css            # compile unit Stisla v3 (khusus admin, palet hitam–putih)
 │   ├── routes/
 │   │   ├── __root.tsx
 │   │   ├── (public)/

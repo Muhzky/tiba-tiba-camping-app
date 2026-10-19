@@ -4,9 +4,17 @@ import { useQuery } from '@tanstack/react-query'
 import { useServerFn } from '@tanstack/react-start'
 import { flexRender, stockFeatures, useTable } from '@tanstack/react-table'
 import { toast } from 'sonner'
+import { Download } from 'lucide-react'
 import { adminOrdersOptions, exportAdminOrders } from '#/server/fn/admin'
 import { formatDateTime, rupiah } from '#/lib/format'
-import { ORDER_STATUS_LABEL, ORDER_TYPE_LABEL, orderStatusTone } from '#/lib/order-status'
+import { ORDER_STATUS_LABEL, ORDER_TYPE_LABEL } from '#/lib/order-status'
+import { AdminPage } from '#/components/admin/page'
+import { AdminCard } from '#/components/admin/card'
+import { AdminTable } from '#/components/admin/table'
+import { AdminPagination } from '#/components/admin/pagination'
+import { OrderStatusBadge } from '#/components/admin/badge'
+import { SearchInput, SelectInput } from '#/components/admin/field'
+import { buttonClass } from '#/components/admin/button'
 
 export const Route = createFileRoute('/admin/transaksi/')({
   loader: ({ context }) => context.queryClient.ensureQueryData(adminOrdersOptions(ORDER_LIST_PARAMS)),
@@ -31,13 +39,6 @@ const STATUSES = [
   'expired',
   'overdue',
 ] as const
-
-const TONE_BADGE: Record<string, string> = {
-  pending: 'badge-warning',
-  success: 'badge-success',
-  info: 'badge-info',
-  destructive: 'badge-danger',
-}
 
 function TransaksiListPage() {
   const [q, setQ] = useState('')
@@ -78,21 +79,21 @@ function TransaksiListPage() {
     columns: [
       {
         id: 'kode',
-        header: () => <th>Kode</th>,
+        header: 'Kode',
         cell: ({ row }) => (
-          <Link to="/admin/transaksi/$id" params={{ id: row.original.id }} className="font-weight-bold">
+          <Link to="/admin/transaksi/$id" params={{ id: row.original.id }} className="font-semibold">
             {row.original.code}
           </Link>
         ),
       },
       {
         id: 'pelanggan',
-        header: () => <th>Pelanggan</th>,
+        header: 'Pelanggan',
         cell: ({ row }) => <span>{row.original.customer ?? 'Walk-in'}</span>,
       },
       {
         id: 'tipe',
-        header: () => <th>Tipe</th>,
+        header: 'Tipe',
         cell: ({ row }) => (
           <span>
             {ORDER_TYPE_LABEL[row.original.type]} · {row.original.channel}
@@ -101,147 +102,120 @@ function TransaksiListPage() {
       },
       {
         id: 'status',
-        header: () => <th>Status</th>,
-        cell: ({ row }) => (
-          <span className={`badge ${TONE_BADGE[orderStatusTone(row.original.status)] ?? 'badge-secondary'}`}>
-            {ORDER_STATUS_LABEL[row.original.status] ?? row.original.status}
-          </span>
-        ),
+        header: 'Status',
+        cell: ({ row }) => <OrderStatusBadge status={row.original.status} />,
       },
       {
         id: 'total',
-        header: () => <th className="text-right">Total</th>,
+        header: 'Total',
+        meta: { className: 'text-right' },
         cell: ({ row }) => <span>{rupiah(row.original.grandTotal)}</span>,
       },
       {
         id: 'dibuat',
-        header: () => <th>Dibuat</th>,
+        header: 'Dibuat',
         cell: ({ row }) => <span>{formatDateTime(row.original.createdAt)}</span>,
       },
     ],
   })
 
-  const totalPages = data ? Math.max(1, Math.ceil(data.total / data.pageSize)) : 1
-
   return (
-    <>
-      <div className="section-header d-flex justify-content-between align-items-center">
-        <h1>Transaksi</h1>
+    <AdminPage
+      title="Transaksi"
+      description="Riwayat order beli, sewa, dan pre-order beserta status pembayarannya."
+      actions={
         <button
           type="button"
-          className="btn btn-secondary"
+          className={buttonClass({ variant: 'neutral' })}
           disabled={exporting}
           onClick={() => void downloadCsv()}
         >
-          <i className="fas fa-file-csv" /> {exporting ? 'Menyiapkan…' : 'Ekspor CSV'}
+          <Download aria-hidden="true" />
+          {exporting ? 'Menyiapkan…' : 'Ekspor CSV'}
         </button>
-      </div>
-      <div className="section-body">
-        <div className="card">
-          <div className="card-body">
-            <form
-              className="form-inline mb-3"
-              onSubmit={(e) => {
-                e.preventDefault()
-                setPage(1)
-              }}
-            >
-              <input
-                className="form-control mr-2 mb-2"
-                style={{ maxWidth: 240 }}
-                placeholder="Cari kode / pelanggan…"
-                value={q}
-                onChange={(e) => {
-                  setQ(e.target.value)
-                  setPage(1)
-                }}
-              />
-              <select
-                className="form-control mr-2 mb-2"
-                value={status}
-                onChange={(e) => {
-                  setStatus(e.target.value)
-                  setPage(1)
-                }}
-              >
-                {STATUSES.map((s) => (
-                  <option key={s} value={s}>
-                    {s === 'all' ? 'Semua status' : (ORDER_STATUS_LABEL[s] ?? s)}
-                  </option>
-                ))}
-              </select>
-              <select
-                className="form-control mr-2 mb-2"
-                value={type}
-                onChange={(e) => {
-                  setType(e.target.value as typeof type)
-                  setPage(1)
-                }}
-              >
-                <option value="all">Semua tipe</option>
-                <option value="buy">Beli</option>
-                <option value="rent">Sewa</option>
-                <option value="preorder">Pre-order</option>
-              </select>
-            </form>
+      }
+    >
+      <AdminCard bodyClassName="p-0">
+        <form
+          className="flex flex-wrap items-center gap-2 p-4"
+          onSubmit={(e) => {
+            e.preventDefault()
+            setPage(1)
+          }}
+        >
+          <SearchInput
+            label="transaksi"
+            placeholder="Cari kode / pelanggan…"
+            className="w-full sm:w-60"
+            value={q}
+            onChange={(value) => {
+              setQ(value)
+              setPage(1)
+            }}
+          />
+          <SelectInput
+            ariaLabel="Filter status"
+            className="w-full sm:w-48"
+            value={status}
+            onChange={(value) => {
+              setStatus(value)
+              setPage(1)
+            }}
+            options={STATUSES.map((s) => ({
+              value: s,
+              label: s === 'all' ? 'Semua status' : (ORDER_STATUS_LABEL[s] ?? s),
+            }))}
+          />
+          <SelectInput
+            ariaLabel="Filter tipe"
+            className="w-full sm:w-40"
+            value={type}
+            onChange={(value) => {
+              setType(value as typeof type)
+              setPage(1)
+            }}
+            options={[
+              { value: 'all', label: 'Semua tipe' },
+              { value: 'buy', label: 'Beli' },
+              { value: 'rent', label: 'Sewa' },
+              { value: 'preorder', label: 'Pre-order' },
+            ]}
+          />
+        </form>
 
-            <div className="table-responsive">
-              <table className="table table-striped mb-0">
-                <thead>
-                  {table.getHeaderGroups().map((hg) => (
-                    <tr key={hg.id}>
-                      {hg.headers.map((h) => (
-                        <th key={h.id}>{flexRender(h.column.columnDef.header, h.getContext())}</th>
-                      ))}
-                    </tr>
-                  ))}
-                </thead>
-                <tbody>
-                  {table.getRowModel().rows.map((row) => (
-                    <tr key={row.id}>
-                      {row.getVisibleCells().map((cell) => (
-                        <td key={cell.id}>
-                          {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                        </td>
-                      ))}
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+        <AdminTable
+          head={table.getHeaderGroups()[0]?.headers.map((h) => (
+            <th key={h.id} className={h.column.columnDef.meta?.className}>
+              {flexRender(h.column.columnDef.header, h.getContext())}
+            </th>
+          ))}
+        >
+          {table.getRowModel().rows.map((row) => (
+            <tr key={row.id}>
+              {row.getVisibleCells().map((cell) => (
+                <td key={cell.id} className={cell.column.columnDef.meta?.className}>
+                  {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                </td>
+              ))}
+            </tr>
+          ))}
+        </AdminTable>
 
-            {isLoading ? (
-              <p className="text-muted text-center py-3">Memuat…</p>
-            ) : data?.rows.length === 0 ? (
-              <p className="text-muted text-center py-3">Tidak ada transaksi.</p>
-            ) : null}
+        {isLoading ? (
+          <p className="py-3 text-center text-muted-foreground">Memuat…</p>
+        ) : data?.rows.length === 0 ? (
+          <p className="py-3 text-center text-muted-foreground">Tidak ada transaksi.</p>
+        ) : null}
 
-            <div className="d-flex justify-content-between align-items-center mt-3">
-              <span className="text-muted text-sm">
-                {data ? `${data.total} transaksi · halaman ${page}/${totalPages}` : ''}
-              </span>
-              <div>
-                <button
-                  type="button"
-                  className="btn btn-sm btn-secondary mr-1"
-                  disabled={page <= 1}
-                  onClick={() => setPage((p) => p - 1)}
-                >
-                  Sebelumnya
-                </button>
-                <button
-                  type="button"
-                  className="btn btn-sm btn-secondary"
-                  disabled={page >= totalPages}
-                  onClick={() => setPage((p) => p + 1)}
-                >
-                  Berikutnya
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </>
+        <AdminPagination
+          page={page}
+          pageSize={data?.pageSize ?? 20}
+          total={data?.total ?? 0}
+          unitLabel="transaksi"
+          onPage={setPage}
+          disabled={isLoading}
+        />
+      </AdminCard>
+    </AdminPage>
   )
 }
