@@ -16,7 +16,7 @@ export function Hero() {
   const parallaxY = useTransform(scrollY, [0, 700], [0, 90])
 
   return (
-    <section className="relative flex min-h-[92svh] items-center overflow-hidden">
+    <section className="relative flex min-h-svh items-center overflow-hidden supports-[height:100dvh]:min-h-dvh">
       <motion.img
         src="/images/hero-v1.jpeg"
         alt=""
