@@ -19,6 +19,7 @@ import { Route as publicCheckoutRouteImport } from './routes/(public)/checkout'
 import { Route as publicDaftarRouteImport } from './routes/(public)/daftar'
 import { Route as publicKeranjangRouteImport } from './routes/(public)/keranjang'
 import { Route as publicMasukRouteImport } from './routes/(public)/masuk'
+import { Route as publicTentangRouteImport } from './routes/(public)/tentang'
 import { Route as AdminIndexRouteImport } from './routes/admin/index'
 import { Route as AdminAtributRouteImport } from './routes/admin/atribut'
 import { Route as AdminPosRouteImport } from './routes/admin/pos'
@@ -84,6 +85,11 @@ const publicKeranjangRoute = publicKeranjangRouteImport.update({
 const publicMasukRoute = publicMasukRouteImport.update({
   id: '/masuk',
   path: '/masuk',
+  getParentRoute: () => publicRouteRoute,
+} as any)
+const publicTentangRoute = publicTentangRouteImport.update({
+  id: '/tentang',
+  path: '/tentang',
   getParentRoute: () => publicRouteRoute,
 } as any)
 const AdminIndexRoute = AdminIndexRouteImport.update({
@@ -181,6 +187,7 @@ export interface FileRoutesByFullPath {
   '/daftar': typeof publicDaftarRoute
   '/keranjang': typeof publicKeranjangRoute
   '/masuk': typeof publicMasukRoute
+  '/tentang': typeof publicTentangRoute
   '/admin/atribut': typeof AdminAtributRoute
   '/admin/pos': typeof AdminPosRoute
   '/admin/rekomendasi': typeof AdminRekomendasiRoute
@@ -207,6 +214,7 @@ export interface FileRoutesByTo {
   '/daftar': typeof publicDaftarRoute
   '/keranjang': typeof publicKeranjangRoute
   '/masuk': typeof publicMasukRoute
+  '/tentang': typeof publicTentangRoute
   '/admin/atribut': typeof AdminAtributRoute
   '/admin/pos': typeof AdminPosRoute
   '/admin/rekomendasi': typeof AdminRekomendasiRoute
@@ -237,6 +245,7 @@ export interface FileRoutesById {
   '/(public)/daftar': typeof publicDaftarRoute
   '/(public)/keranjang': typeof publicKeranjangRoute
   '/(public)/masuk': typeof publicMasukRoute
+  '/(public)/tentang': typeof publicTentangRoute
   '/admin/atribut': typeof AdminAtributRoute
   '/admin/pos': typeof AdminPosRoute
   '/admin/rekomendasi': typeof AdminRekomendasiRoute
@@ -267,6 +276,7 @@ export interface FileRouteTypes {
     | '/daftar'
     | '/keranjang'
     | '/masuk'
+    | '/tentang'
     | '/admin/atribut'
     | '/admin/pos'
     | '/admin/rekomendasi'
@@ -293,6 +303,7 @@ export interface FileRouteTypes {
     | '/daftar'
     | '/keranjang'
     | '/masuk'
+    | '/tentang'
     | '/admin/atribut'
     | '/admin/pos'
     | '/admin/rekomendasi'
@@ -322,6 +333,7 @@ export interface FileRouteTypes {
     | '/(public)/daftar'
     | '/(public)/keranjang'
     | '/(public)/masuk'
+    | '/(public)/tentang'
     | '/admin/atribut'
     | '/admin/pos'
     | '/admin/rekomendasi'
@@ -421,6 +433,13 @@ declare module '@tanstack/react-router' {
       path: '/masuk'
       fullPath: '/masuk'
       preLoaderRoute: typeof publicMasukRouteImport
+      parentRoute: typeof publicRouteRoute
+    }
+    '/(public)/tentang': {
+      id: '/(public)/tentang'
+      path: '/tentang'
+      fullPath: '/tentang'
+      preLoaderRoute: typeof publicTentangRouteImport
       parentRoute: typeof publicRouteRoute
     }
     '/admin/': {
@@ -569,6 +588,7 @@ interface publicRouteRouteChildren {
   publicDaftarRoute: typeof publicDaftarRoute
   publicKeranjangRoute: typeof publicKeranjangRoute
   publicMasukRoute: typeof publicMasukRoute
+  publicTentangRoute: typeof publicTentangRoute
   publicIndexRoute: typeof publicIndexRoute
   publicProdukSlugRoute: typeof publicProdukSlugRoute
   publicKatalogIndexRoute: typeof publicKatalogIndexRoute
@@ -580,6 +600,7 @@ const publicRouteRouteChildren: publicRouteRouteChildren = {
   publicDaftarRoute: publicDaftarRoute,
   publicKeranjangRoute: publicKeranjangRoute,
   publicMasukRoute: publicMasukRoute,
+  publicTentangRoute: publicTentangRoute,
   publicIndexRoute: publicIndexRoute,
   publicProdukSlugRoute: publicProdukSlugRoute,
   publicKatalogIndexRoute: publicKatalogIndexRoute,

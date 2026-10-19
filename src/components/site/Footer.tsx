@@ -25,13 +25,19 @@ const socials = ['Instagram', 'YouTube', 'TikTok']
 export function Footer() {
   return (
     <footer id="kontak" className="border-t border-border bg-background">
-      <div className="mx-auto max-w-7xl px-4 py-16 md:px-8">
+      <div className="mx-auto max-w-7xl px-4 py-8 md:px-8">
         <div className="grid gap-10 md:grid-cols-4">
           <div className="flex flex-col items-start gap-4">
             <Logo />
             <p className="max-w-xs text-sm leading-relaxed text-muted-foreground">
               “Outdoor gear — rencana boleh dadakan, gear harus matang.”
             </p>
+            <Link
+              to="/tentang"
+              className="text-sm font-medium text-muted-foreground underline-offset-4 transition hover:text-foreground hover:underline"
+            >
+              Tentang kami
+            </Link>
             <div className="flex gap-2">
               {socials.map((social) => (
                 <a

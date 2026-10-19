@@ -8,9 +8,9 @@ export function Recommendations() {
   if (!data) return null
 
   return (
-    <section className="mx-auto max-w-7xl px-4 pb-20 md:px-8 md:pb-28">
+    <section className="mx-auto max-w-7xl px-4 pb-15 md:px-8 md:pb-28">
       <Reveal>
-        <div className="mb-8">
+        <div className="mb-8 mt-15">
           <p className="mb-2 text-sm font-medium text-muted-foreground">
             {data.personalized
               ? 'Dipilih dari produk yang kamu sukai dan beli'

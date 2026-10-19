@@ -99,12 +99,12 @@ export function Hero() {
         ))}
       </nav>
 
-      <a
-        href="#tentang"
+      <Link
+        to="/tentang"
         className="absolute bottom-8 right-4 hidden rounded-full border border-foreground/30 px-6 py-2.5 text-sm font-medium text-foreground transition hover:bg-foreground hover:text-background md:right-8 md:block"
       >
         Selengkapnya
-      </a>
+      </Link>
     </section>
   )
 }

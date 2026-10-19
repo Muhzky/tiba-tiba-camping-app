@@ -4,7 +4,7 @@ import { db } from '#/server/db'
 import { products } from '#/server/db/schema'
 import { env } from '#/lib/env'
 
-const STATIC_PATHS = ['/', '/katalog', '/masuk', '/daftar']
+const STATIC_PATHS = ['/', '/katalog', '/tentang', '/masuk', '/daftar']
 
 export const Route = createFileRoute('/sitemap.xml')({
   server: {

@@ -26,7 +26,7 @@ import { Logo } from './Logo'
 const menu = [
   { label: 'Katalog', to: '/katalog' as const },
   { label: 'Sewa', to: '/katalog' as const },
-  { label: 'Tentang', href: '#tentang' },
+  { label: 'Tentang', to: '/tentang' as const },
   { label: 'Kontak', href: '#kontak' },
 ]
 
