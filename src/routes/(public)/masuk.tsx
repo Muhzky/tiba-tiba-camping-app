@@ -11,6 +11,7 @@ import { AlertCircle, ArrowRight, Mail } from 'lucide-react'
 import { toast } from 'sonner'
 import { z } from 'zod'
 import { authClient } from '#/lib/auth-client'
+import { queryKeys } from '#/lib/query-keys'
 import { meOptions } from '#/server/fn/auth'
 import { AuthField, PasswordField } from '#/components/site/AuthField'
 import { AuthShell } from '#/components/site/AuthShell'
@@ -44,6 +45,8 @@ function LoginPage() {
         return
       }
       await queryClient.invalidateQueries({ queryKey: meOptions.queryKey })
+      // Hasil "Paling cocok" dan rekomendasi kini memakai profil akun ini.
+      await queryClient.invalidateQueries({ queryKey: queryKeys.products.all() })
       // Arahkan admin/owner ke panel admin, customer ke akun (kecuali ada ?redirect=).
       const me = await queryClient.fetchQuery(meOptions)
       const fallback = me && me.role !== 'customer' ? '/admin' : '/akun'

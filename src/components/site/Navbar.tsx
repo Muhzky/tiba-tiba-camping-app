@@ -16,6 +16,7 @@ import {
 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { toast } from 'sonner'
+import { queryKeys } from '#/lib/query-keys'
 import { logout, meOptions } from '#/server/fn/auth'
 import { cartOptions } from '#/server/fn/cart'
 import { Button } from '#/components/ui/button'
@@ -40,7 +41,7 @@ type MenuItem = {
   description: string
   icon: LucideIcon
 } & (
-  { to: '/katalog' | '/tentang'; href?: never } | { href: string; to?: never }
+  { to: '/katalog' | '/sewa' | '/tentang'; href?: never } | { href: string; to?: never }
 )
 
 const menu: MenuItem[] = [
@@ -52,7 +53,7 @@ const menu: MenuItem[] = [
   },
   {
     label: 'Sewa',
-    to: '/katalog',
+    to: '/sewa',
     icon: Tent,
     description: 'Sewa alat perjalanan',
   },
@@ -133,6 +134,8 @@ export function Navbar() {
     mutationFn: () => signOut(),
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: meOptions.queryKey })
+      // Jangan tampilkan rekomendasi personal milik akun sebelumnya.
+      await queryClient.invalidateQueries({ queryKey: queryKeys.products.all() })
       toast.success('Kamu sudah keluar.')
     },
   })

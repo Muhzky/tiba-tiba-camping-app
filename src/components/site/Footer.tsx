@@ -12,7 +12,7 @@ const columns = [
     title: 'Belanja',
     links: [
       { label: 'Katalog', to: '/katalog' },
-      { label: 'Sewa Alat', to: '/katalog' },
+      { label: 'Sewa Alat', to: '/sewa' },
       { label: 'Keranjang', to: '/keranjang' },
     ],
   },

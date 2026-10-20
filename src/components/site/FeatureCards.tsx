@@ -13,7 +13,7 @@ const features = [
     title: 'Sewa',
     desc: 'Sewa harian dengan deposit, unit terawat dan bersih.',
     icon: CalendarClock,
-    to: '/katalog' as const,
+    to: '/sewa' as const,
   },
   {
     title: 'Pre-Order',

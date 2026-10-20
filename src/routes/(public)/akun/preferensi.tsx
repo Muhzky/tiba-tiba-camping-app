@@ -5,10 +5,11 @@ import { useForm } from '@tanstack/react-form'
 import { toast } from 'sonner'
 import {
   preferencesOptions,
-  savePreferences
-  
+  recommendationProfileOptions,
+  savePreferences,
 } from '#/server/fn/account'
-import type {PreferenceInput} from '#/server/fn/account';
+import type { PreferenceInput } from '#/server/fn/account'
+import { queryKeys } from '#/lib/query-keys'
 import { categoriesOptions } from '#/server/fn/product'
 import { Button } from '#/components/ui/button'
 import { Input } from '#/components/ui/input'
@@ -90,7 +91,15 @@ function PreferensiForm({
   const mutation = useMutation({
     mutationFn: (value: PreferenceInput) => save({ data: value }),
     onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: preferencesOptions.queryKey })
+      // Preferensi mengubah vektor profil CBF: segarkan ringkasan akun,
+      // hasil katalog "Paling cocok", dan rekomendasi homepage.
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: preferencesOptions.queryKey }),
+        queryClient.invalidateQueries({
+          queryKey: recommendationProfileOptions.queryKey,
+        }),
+        queryClient.invalidateQueries({ queryKey: queryKeys.products.all() }),
+      ])
       toast.success('Preferensi rekomendasi tersimpan.')
     },
     onError: () => toast.error('Gagal menyimpan preferensi.'),

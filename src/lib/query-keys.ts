@@ -1,6 +1,7 @@
 export const queryKeys = {
   me: () => ['me'] as const,
   products: {
+    all: () => ['products'] as const,
     bestSellers: () => ['products', 'best-sellers'] as const,
     recommendations: () => ['products', 'recommendations'] as const,
     recs: (limit: number) => ['products', 'recs', limit] as const,
@@ -10,6 +11,9 @@ export const queryKeys = {
   katalog: {
     categories: () => ['katalog', 'categories'] as const,
     facets: () => ['katalog', 'facets'] as const,
+  },
+  rental: {
+    catalog: () => ['rental', 'catalog'] as const,
   },
   cart: () => ['cart'] as const,
   checkout: (input: unknown) => ['checkout', input] as const,

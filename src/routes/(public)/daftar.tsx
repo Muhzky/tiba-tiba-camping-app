@@ -11,6 +11,7 @@ import { AlertCircle, ArrowRight, Mail, UserRound } from 'lucide-react'
 import { toast } from 'sonner'
 import { z } from 'zod'
 import { authClient } from '#/lib/auth-client'
+import { queryKeys } from '#/lib/query-keys'
 import { meOptions } from '#/server/fn/auth'
 import { AuthField, PasswordField } from '#/components/site/AuthField'
 import { AuthShell } from '#/components/site/AuthShell'
@@ -45,6 +46,8 @@ function RegisterPage() {
         return
       }
       await queryClient.invalidateQueries({ queryKey: meOptions.queryKey })
+      // Rekomendasi katalog kini memakai profil akun baru.
+      await queryClient.invalidateQueries({ queryKey: queryKeys.products.all() })
       toast.success('Akun dibuat. Selamat datang di Tiba Tiba Camping!')
       await navigate({ to: '/akun' })
     },

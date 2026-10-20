@@ -151,6 +151,18 @@ export async function rebuildUserProfile(userId: string): Promise<boolean> {
   return true
 }
 
+/** Preferensi transaksi eksplisit (beli/sewa/bebas) untuk penyaringan kandidat. */
+export async function getUserPreferMode(
+  userId: string,
+): Promise<'buy' | 'rent' | 'any'> {
+  const [row] = await db
+    .select({ preferMode: userPreferences.preferMode })
+    .from(userPreferences)
+    .where(eq(userPreferences.userId, userId))
+    .limit(1)
+  return row?.preferMode ?? 'any'
+}
+
 export async function getUserProfile(userId: string): Promise<number[] | null> {
   const rebuilt = await rebuildUserProfile(userId)
   if (!rebuilt) return null

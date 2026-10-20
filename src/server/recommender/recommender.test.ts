@@ -93,6 +93,8 @@ const cand = (over: Partial<RecCandidate> = {}): RecCandidate => ({
   categoryId: crypto.randomUUID(),
   vector: null,
   active: true,
+  isSellable: true,
+  isRentable: true,
   isPreorder: false,
   stock: 3,
   soldCount: 0,
@@ -143,6 +145,34 @@ describe('pickForUser', () => {
     const picked = pickForUser({ profile: [1, 0], candidates: [miss, hit], limit: 2 })
     expect(picked.find((p) => p.id === 'hit')?.reason).toBe('personal')
     expect(picked.find((p) => p.id === 'miss')?.reason).toBe('popular')
+  })
+
+  it('preferensi transaksi akun menyaring kandidat beli/sewa', () => {
+    const sell = cand({ id: 'sell', isSellable: true, isRentable: false })
+    const rent = cand({ id: 'rent', isSellable: false, isRentable: true })
+    const both = cand({ id: 'both', isSellable: true, isRentable: true })
+    const candidates = [sell, rent, both]
+
+    expect(
+      pickForUser({ profile: null, candidates, limit: 10, preferMode: 'buy' }).map((p) => p.id).sort(),
+    ).toEqual(['both', 'sell'])
+    expect(
+      pickForUser({ profile: null, candidates, limit: 10, preferMode: 'rent' }).map((p) => p.id).sort(),
+    ).toEqual(['both', 'rent'])
+    expect(
+      pickForUser({ profile: null, candidates, limit: 10, preferMode: 'any' }),
+    ).toHaveLength(3)
+  })
+
+  it('preferensi transaksi tidak mengosongkan hasil bila tidak ada yang cocok', () => {
+    const rentOnly = cand({ id: 'rent-only', isSellable: false, isRentable: true })
+    const picked = pickForUser({
+      profile: null,
+      candidates: [rentOnly],
+      limit: 10,
+      preferMode: 'buy',
+    })
+    expect(picked.map((p) => p.id)).toEqual(['rent-only'])
   })
 })
 

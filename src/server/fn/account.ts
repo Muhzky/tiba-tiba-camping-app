@@ -1,5 +1,5 @@
 import { createServerFn } from '@tanstack/react-start'
-import { and, desc, eq } from 'drizzle-orm'
+import { and, desc, eq, inArray } from 'drizzle-orm'
 import { z } from 'zod'
 import { queryOptions } from '@tanstack/react-query'
 import { db } from '#/server/db'
@@ -181,6 +181,78 @@ export const getPreferences = createServerFn({ method: 'GET' }).handler(async ()
 export const preferencesOptions = queryOptions({
   queryKey: [...queryKeys.me(), 'preferences'],
   queryFn: () => getPreferences(),
+})
+
+/**
+ * Ringkasan preferensi yang dipakai fitur "Paling cocok untukmu" di katalog.
+ * Guest mendapat `authenticated: false` (bukan error) supaya halaman publik
+ * tetap bisa menampilkan cold-start/popular dan mengajak masuk.
+ */
+export type RecommendationProfile =
+  | { authenticated: false }
+  | {
+      authenticated: true
+      name: string
+      hasPreferences: boolean
+      categories: string[]
+      budgetMin: number | null
+      budgetMax: number | null
+      partySize: number | null
+      conditions: string[]
+      style: string[]
+      preferMode: 'buy' | 'rent' | 'any'
+      updatedAt: Date | null
+    }
+
+export const getRecommendationProfile = createServerFn({
+  method: 'GET',
+}).handler(async (): Promise<RecommendationProfile> => {
+  const user = await getSessionUser()
+  if (!user) return { authenticated: false }
+
+  const [prefs] = await db
+    .select()
+    .from(userPreferences)
+    .where(eq(userPreferences.userId, user.id))
+    .limit(1)
+
+  const categoryRows = prefs?.categories.length
+    ? await db
+        .select({ name: categories.name })
+        .from(categories)
+        .where(inArray(categories.id, prefs.categories))
+    : []
+
+  const hasPreferences = Boolean(
+    prefs &&
+      (prefs.categories.length > 0 ||
+        prefs.budgetMin != null ||
+        prefs.budgetMax != null ||
+        prefs.partySize != null ||
+        prefs.conditions.length > 0 ||
+        prefs.style.length > 0 ||
+        prefs.preferMode !== 'any'),
+  )
+
+  return {
+    authenticated: true,
+    name: user.name,
+    hasPreferences,
+    categories: categoryRows.map((row) => row.name),
+    budgetMin: prefs?.budgetMin ?? null,
+    budgetMax: prefs?.budgetMax ?? null,
+    partySize: prefs?.partySize ?? null,
+    conditions: prefs?.conditions ?? [],
+    style: prefs?.style ?? [],
+    preferMode: prefs?.preferMode ?? 'any',
+    updatedAt: prefs?.updatedAt ?? null,
+  }
+})
+
+export const recommendationProfileOptions = queryOptions({
+  queryKey: [...queryKeys.me(), 'recommendation-profile'],
+  queryFn: () => getRecommendationProfile(),
+  staleTime: 30_000,
 })
 
 export const savePreferences = createServerFn({ method: 'POST' })

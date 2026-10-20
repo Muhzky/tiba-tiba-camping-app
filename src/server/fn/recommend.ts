@@ -16,7 +16,7 @@ import { getSessionUser } from '#/server/fn/auth'
 import { fetchCardsByIds } from '#/server/fn/product'
 import type { ProductCardData } from '#/server/fn/product'
 import { cosineArrays } from '#/server/recommender/similarity'
-import { getUserProfile } from '#/server/recommender/profile'
+import { getUserPreferMode, getUserProfile } from '#/server/recommender/profile'
 
 export type RecReason = 'personal' | 'popular' | 'baru'
 
@@ -26,11 +26,15 @@ export const REASON_LABEL: Record<RecReason, string> = {
   baru: 'Baru masuk toko',
 }
 
+export type PreferMode = 'buy' | 'rent' | 'any'
+
 export type RecCandidate = {
   id: string
   categoryId: string
   vector: number[] | null
   active: boolean
+  isSellable: boolean
+  isRentable: boolean
   isPreorder: boolean
   stock: number
   soldCount: number
@@ -42,11 +46,23 @@ export function pickForUser(opts: {
   profile: number[] | null
   candidates: RecCandidate[]
   limit: number
+  preferMode?: PreferMode
 }): Array<{ id: string; reason: RecReason }> {
   const pool = opts.candidates.filter(
     (c) => c.active && (c.stock > 0 || c.isPreorder) && !c.purchased,
   )
-  const scored = pool.map((c) => ({
+  // Preferensi transaksi akun: utamakan produk yang bisa dibeli/disewa.
+  // Bila tidak ada yang cocok, jangan kosongkan hasil — pakai pool penuh.
+  const modePool =
+    opts.preferMode && opts.preferMode !== 'any'
+      ? pool.filter((c) =>
+          opts.preferMode === 'rent'
+            ? c.isRentable
+            : c.isSellable || c.isPreorder,
+        )
+      : pool
+  const visible = modePool.length ? modePool : pool
+  const scored = visible.map((c) => ({
     c,
     score: opts.profile && c.vector ? cosineArrays(opts.profile, c.vector) : 0,
   }))
@@ -83,6 +99,8 @@ async function loadCandidates(): Promise<RecCandidate[]> {
         id: products.id,
         categoryId: products.categoryId,
         active: products.isActive,
+        isSellable: products.isSellable,
+        isRentable: products.isRentable,
         isPreorder: products.isPreorder,
         createdAt: products.createdAt,
         stock: sql<number>`coalesce(sum(${productVariants.stock}), 0)`,
@@ -128,6 +146,8 @@ async function loadCandidates(): Promise<RecCandidate[]> {
     id: r.id,
     categoryId: r.categoryId,
     active: r.active,
+    isSellable: r.isSellable,
+    isRentable: r.isRentable,
     isPreorder: r.isPreorder,
     stock: Number(r.stock),
     createdAt: r.createdAt,
@@ -148,8 +168,15 @@ export const getRecommendations = createServerFn({ method: 'GET' })
   .validator((input: z.input<typeof recsSchema>) => recsSchema.parse(input ?? {}))
   .handler(async ({ data }): Promise<RecommendationsResult> => {
     const [candidates, user] = await Promise.all([loadCandidates(), getSessionUser()])
-    const profile = user ? await getUserProfile(user.id) : null
-    const picked = pickForUser({ profile, candidates, limit: data.limit })
+    const [profile, preferMode] = user
+      ? await Promise.all([getUserProfile(user.id), getUserPreferMode(user.id)])
+      : [null, 'any' as const]
+    const picked = pickForUser({
+      profile,
+      candidates,
+      limit: data.limit,
+      preferMode,
+    })
     const cards = await fetchCardsByIds(picked.map((p) => p.id))
     const reasonById = new Map(picked.map((p) => [p.id, p.reason]))
     return {
@@ -182,8 +209,15 @@ export async function rankActiveProductIds(userId: string | null): Promise<strin
   const candidates = await loadCandidates()
   // katalog tetap menampilkan produk yang pernah dibeli (relevansi saja, bukan filter)
   for (const c of candidates) c.purchased = false
-  const profile = userId ? await getUserProfile(userId) : null
-  const picked = pickForUser({ profile, candidates, limit: candidates.length })
+  const [profile, preferMode] = userId
+    ? await Promise.all([getUserProfile(userId), getUserPreferMode(userId)])
+    : [null, 'any' as const]
+  const picked = pickForUser({
+    profile,
+    candidates,
+    limit: candidates.length,
+    preferMode,
+  })
   const ranked = picked.map((p) => p.id)
   const rankedSet = new Set(ranked)
   return [...ranked, ...candidates.filter((c) => !rankedSet.has(c.id)).map((c) => c.id)]

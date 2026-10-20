@@ -50,7 +50,7 @@ Kesimpulan: metode CBF diimplementasikan lengkap (vektorisasi → kemiripan → 
 - **Profil dari interaksi**: order beli/sewa, favorit, add-to-cart, view — dengan bobot dan *time decay* (`profile.ts:16-29, 74-104`).
 - Skoring akhir = `cosine(profil_user, vektor_produk)` (`src/server/fn/recommend.ts:49-52`).
 
-Catatan keterbatasan (lihat §4): `preferMode` (beli/sewa/bebas) tersimpan tetapi belum digunakan dalam skoring.
+`preferMode` (beli/sewa/bebas) kini dipakai untuk memprioritaskan kandidat yang bisa dibeli/disewa sebelum skoring cosine (`src/server/fn/recommend.ts::pickForUser`).
 
 ---
 
@@ -104,11 +104,10 @@ Akibatnya, rumusan "menguji kinerja … rekomendasi yang relevan" belum terjawab
 ## 4. Gap & Catatan Teknis
 
 1. **Metrik evaluasi belum ada** — tidak ada precision@k/recall/NDCG/CTR; hanya unit test kebenaran. Ini gap utama untuk RM4.
-2. **`preferMode` tidak dipakai** — tersimpan (`schema.ts:147`) dan diisi (`preferensi.tsx`), tetapi tidak memengaruhi skoring maupun filter. Rekomendasi belum membedakan preferensi beli vs sewa.
-3. **Perilaku guest tidak terekam** — `product_events.sessionId` (`schema.ts:317`) ada tetapi belum diisi, sehingga sinyal pengguna anonim (belum login) tidak tertangkap.
-4. **Pemetaan teks preferensi bergantung kosakata produk** — kondisi/gaya hanya berpengaruh bila tokennya muncul di deskripsi/atribut produk (`profile.ts:131-136`).
-5. **Skalabilitas** — vektor disimpan sebagai `jsonb` array padat (tanpa pgvector), rebuild item-to-item **O(n²)**; aman sampai ~5k produk (ditandai `ponytail:` di `similarity.ts:39-40`).
-6. **Rebuild otomatis non-blocking** — simpan produk/atribut/kamus memicu `scheduleRebuild()`; ada tombol rebuild manual di admin (`admin.ts:740-743, 1494-1497`).
+2. **Perilaku guest tidak terekam** — `product_events.sessionId` (`schema.ts:317`) ada tetapi belum diisi, sehingga sinyal pengguna anonim (belum login) tidak tertangkap.
+3. **Pemetaan teks preferensi bergantung kosakata produk** — kondisi/gaya hanya berpengaruh bila tokennya muncul di deskripsi/atribut produk (`profile.ts:131-136`).
+4. **Skalabilitas** — vektor disimpan sebagai `jsonb` array padat (tanpa pgvector), rebuild item-to-item **O(n²)**; aman sampai ~5k produk (ditandai `ponytail:` di `similarity.ts:39-40`).
+5. **Rebuild otomatis non-blocking** — simpan produk/atribut/kamus memicu `scheduleRebuild()`; ada tombol rebuild manual di admin (`admin.ts:740-743, 1494-1497`).
 
 ---
 
@@ -129,7 +128,6 @@ Untuk menutup rumusan "menguji kinerja", tambahkan evaluasi kuantitatif. Usulan 
 - Halaman ringkasan metrik di `/admin/rekomendasi`.
 
 **C. Perbaikan cepat lain (opsional)**
-- Pakai `preferMode` untuk memfilter/menaikkan skor produk beli vs sewa.
 - Isi `sessionId` agar sinyal guest terekam (cold start lebih baik).
 
 ---
