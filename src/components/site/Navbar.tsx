@@ -5,11 +5,15 @@ import { useServerFn } from '@tanstack/react-start'
 import {
   ChevronRight,
   Compass,
+  Heart,
+  Home,
   Info,
   LogOut,
   Menu,
   Phone,
+  Receipt,
   Search,
+  Settings2,
   ShoppingBag,
   Tent,
   UserRound,
@@ -24,7 +28,6 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '#/components/ui/dropdown-menu'
@@ -41,7 +44,8 @@ type MenuItem = {
   description: string
   icon: LucideIcon
 } & (
-  { to: '/katalog' | '/sewa' | '/tentang'; href?: never } | { href: string; to?: never }
+  | { to: '/katalog' | '/sewa' | '/tentang'; href?: never }
+  | { href: string; to?: never }
 )
 
 const menu: MenuItem[] = [
@@ -124,6 +128,34 @@ function MobileMenuItem({
   )
 }
 
+type AccountLink =
+  '/akun' | '/akun/favorit' | '/akun/pesanan' | '/akun/preferensi'
+
+function AccountMenuItem({
+  to,
+  icon: Icon,
+  label,
+}: {
+  to: AccountLink
+  icon: LucideIcon
+  label: string
+}) {
+  return (
+    <DropdownMenuItem
+      asChild
+      className="gap-2.5 rounded-lg px-2 py-1.5 text-[13px] focus:bg-primary focus:text-primary-foreground"
+    >
+      <Link to={to}>
+        <Icon
+          className="size-4 text-muted-foreground group-focus/dropdown-menu-item:text-primary-foreground"
+          aria-hidden="true"
+        />
+        {label}
+      </Link>
+    </DropdownMenuItem>
+  )
+}
+
 export function Navbar() {
   const [open, setOpen] = useState(false)
   const queryClient = useQueryClient()
@@ -135,7 +167,9 @@ export function Navbar() {
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: meOptions.queryKey })
       // Jangan tampilkan rekomendasi personal milik akun sebelumnya.
-      await queryClient.invalidateQueries({ queryKey: queryKeys.products.all() })
+      await queryClient.invalidateQueries({
+        queryKey: queryKeys.products.all(),
+      })
       toast.success('Kamu sudah keluar.')
     },
   })
@@ -210,31 +244,59 @@ export function Navbar() {
                   {user.name.slice(0, 1).toUpperCase()}
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-56">
-                <DropdownMenuLabel>
-                  <p className="truncate text-sm font-semibold">{user.name}</p>
-                  <p className="truncate text-xs font-normal text-muted-foreground">
-                    {user.email}
-                  </p>
-                </DropdownMenuLabel>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem asChild>
-                  <Link to="/akun">Ringkasan akun</Link>
-                </DropdownMenuItem>
-                <DropdownMenuItem asChild>
-                  <Link to="/akun/favorit">Favorit</Link>
-                </DropdownMenuItem>
-                <DropdownMenuItem asChild>
-                  <Link to="/akun/pesanan">Riwayat pesanan</Link>
-                </DropdownMenuItem>
-                <DropdownMenuSeparator />
+              <DropdownMenuContent
+                align="end"
+                sideOffset={8}
+                className="w-60 rounded-xl p-1.5 shadow-lg"
+              >
+                <div className="flex items-center gap-2.5 px-2 pb-2 pt-1.5">
+                  <span className="grid size-8 shrink-0 place-items-center rounded-full bg-primary text-xs font-semibold text-primary-foreground">
+                    {user.name.slice(0, 1).toUpperCase()}
+                  </span>
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-[13px] font-semibold leading-tight">
+                      {user.name}
+                    </p>
+                    <p className="truncate text-[11px] leading-tight text-muted-foreground">
+                      {user.email}
+                    </p>
+                  </div>
+                </div>
+
+                <DropdownMenuSeparator className="my-1.5 bg-border/70" />
+
+                <AccountMenuItem
+                  to="/akun"
+                  icon={Home}
+                  label="Ringkasan akun"
+                />
+                <AccountMenuItem
+                  to="/akun/favorit"
+                  icon={Heart}
+                  label="Favorit"
+                />
+                <AccountMenuItem
+                  to="/akun/pesanan"
+                  icon={Receipt}
+                  label="Riwayat pesanan"
+                />
+                <AccountMenuItem
+                  to="/akun/preferensi"
+                  icon={Settings2}
+                  label="Preferensi"
+                />
+
+                <DropdownMenuSeparator className="my-1.5 bg-border/70" />
                 <DropdownMenuItem
-                  variant="destructive"
                   onSelect={() => logoutMutation.mutate()}
                   disabled={logoutMutation.isPending}
+                  className="gap-2.5 rounded-lg px-2 py-1.5 text-[13px] text-sale focus:bg-sale focus:text-white"
                 >
-                  <LogOut />
-                  Keluar
+                  <LogOut
+                    className="size-4 group-focus/dropdown-menu-item:text-white"
+                    aria-hidden="true"
+                  />
+                  {logoutMutation.isPending ? 'Sedang keluar…' : 'Keluar'}
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
