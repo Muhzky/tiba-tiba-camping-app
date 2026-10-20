@@ -2,7 +2,19 @@ import { useState } from 'react'
 import { Link } from '@tanstack/react-router'
 import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query'
 import { useServerFn } from '@tanstack/react-start'
-import { LogOut, Menu, Search, ShoppingBag, UserRound } from 'lucide-react'
+import {
+  ChevronRight,
+  Compass,
+  Info,
+  LogOut,
+  Menu,
+  Phone,
+  Search,
+  ShoppingBag,
+  Tent,
+  UserRound,
+} from 'lucide-react'
+import type { LucideIcon } from 'lucide-react'
 import { toast } from 'sonner'
 import { logout, meOptions } from '#/server/fn/auth'
 import { cartOptions } from '#/server/fn/cart'
@@ -23,12 +35,93 @@ import {
 } from '#/components/ui/sheet'
 import { Logo } from './Logo'
 
-const menu = [
-  { label: 'Katalog', to: '/katalog' as const },
-  { label: 'Sewa', to: '/katalog' as const },
-  { label: 'Tentang', to: '/tentang' as const },
-  { label: 'Kontak', href: '#kontak' },
+type MenuItem = {
+  label: string
+  description: string
+  icon: LucideIcon
+} & (
+  { to: '/katalog' | '/tentang'; href?: never } | { href: string; to?: never }
+)
+
+const menu: MenuItem[] = [
+  {
+    label: 'Katalog',
+    to: '/katalog',
+    icon: Compass,
+    description: 'Semua gear outdoor',
+  },
+  {
+    label: 'Sewa',
+    to: '/katalog',
+    icon: Tent,
+    description: 'Sewa alat perjalanan',
+  },
+  {
+    label: 'Tentang',
+    to: '/tentang',
+    icon: Info,
+    description: 'Kenali Tiba Tiba Camping',
+  },
+  {
+    label: 'Kontak',
+    href: '#kontak',
+    icon: Phone,
+    description: 'Hubungi tim kami',
+  },
 ]
+
+function MobileMenuItem({
+  item,
+  index,
+  onNavigate,
+}: {
+  item: MenuItem
+  index: number
+  onNavigate: () => void
+}) {
+  const Icon = item.icon
+  const content = (
+    <>
+      <span className="grid size-9 shrink-0 place-items-center rounded-lg bg-surface text-foreground/80 transition-colors duration-200 group-hover:bg-primary group-hover:text-primary-foreground">
+        <Icon className="size-4" aria-hidden="true" />
+      </span>
+      <span className="flex min-w-0 flex-col">
+        <span className="text-[13px] font-semibold text-foreground">
+          {item.label}
+        </span>
+        <span className="truncate text-[11px] text-muted-foreground">
+          {item.description}
+        </span>
+      </span>
+      <ChevronRight
+        className="ml-auto size-3.5 shrink-0 text-muted-foreground transition-transform duration-200 group-hover:translate-x-0.5 group-hover:text-foreground"
+        aria-hidden="true"
+      />
+    </>
+  )
+  const className =
+    'group flex animate-in items-center gap-2.5 rounded-xl border border-border/70 bg-card p-2.5 fill-mode-both fade-in slide-in-from-right-2 duration-300 hover:border-foreground/15 hover:bg-surface motion-reduce:animate-none'
+
+  return item.to ? (
+    <Link
+      to={item.to}
+      onClick={onNavigate}
+      className={className}
+      style={{ animationDelay: `${60 + index * 45}ms` }}
+    >
+      {content}
+    </Link>
+  ) : (
+    <a
+      href={item.href}
+      onClick={onNavigate}
+      className={className}
+      style={{ animationDelay: `${60 + index * 45}ms` }}
+    >
+      {content}
+    </a>
+  )
+}
 
 export function Navbar() {
   const [open, setOpen] = useState(false)
@@ -167,30 +260,41 @@ export function Navbar() {
                 <Menu />
               </Button>
             </SheetTrigger>
-            <SheetContent side="right" className="flex flex-col gap-2">
-              <SheetTitle className="sr-only">Menu navigasi</SheetTitle>
-              <Logo className="mb-4" />
-              {menu.map((item) =>
-                'to' in item && item.to ? (
-                  <Link
+            <SheetContent
+              side="right"
+              className="flex w-[80vw] max-w-[19rem] flex-col gap-0 p-0 duration-300 ease-out"
+            >
+              <div className="flex items-center border-b border-border px-4 py-3.5 pr-12">
+                <SheetTitle className="text-[13px] font-semibold tracking-wide">
+                  Menu
+                </SheetTitle>
+              </div>
+
+              <nav
+                aria-label="Menu utama"
+                className="flex flex-1 flex-col gap-1.5 overflow-y-auto p-3"
+              >
+                <p className="px-1.5 pb-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
+                  Jelajahi
+                </p>
+                {menu.map((item, index) => (
+                  <MobileMenuItem
                     key={item.label}
-                    to={item.to}
-                    onClick={() => setOpen(false)}
-                    className="rounded-full px-4 py-3 text-sm font-medium hover:bg-surface"
-                  >
-                    {item.label}
-                  </Link>
-                ) : (
-                  <a
-                    key={item.label}
-                    href={item.href}
-                    onClick={() => setOpen(false)}
-                    className="rounded-full px-4 py-3 text-sm font-medium hover:bg-surface"
-                  >
-                    {item.label}
-                  </a>
-                ),
-              )}
+                    item={item}
+                    index={index}
+                    onNavigate={() => setOpen(false)}
+                  />
+                ))}
+              </nav>
+
+              <div className="mt-auto border-t border-border px-4 py-3">
+                <p className="text-[11px] text-muted-foreground">
+                  Senin–Sabtu, 09.00–18.00 WIB
+                </p>
+                <p className="mt-0.5 text-[11px] text-muted-foreground">
+                  halo@tibatibacamping.test
+                </p>
+              </div>
             </SheetContent>
           </Sheet>
         </div>
