@@ -113,6 +113,15 @@
   background-color: var(--sidebar-bg);
   color: var(--sidebar-color);
 }
+
+/* Logo brand: versi putih transparan (icon-admin-white.png) agar terbaca di sidebar hitam. */
+.admin-sidebar .sidebar__brand {
+  --sidebar-brand-icon-size: calc(var(--spacing) * 11);
+}
+.admin-sidebar .sidebar__brand img {
+  object-fit: contain;
+}
+
 .admin-sidebar .badge--primary {
   --badge-bg: color-mix(in oklch, white 16%, transparent);
   --badge-color: #ffffff;

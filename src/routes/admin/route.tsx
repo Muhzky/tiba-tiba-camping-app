@@ -14,7 +14,6 @@ import {
   Package,
   ReceiptText,
   Tags,
-  Tent,
   Users,
 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
@@ -137,8 +136,12 @@ function AdminLayout() {
         <aside id="admin-sidebar" className="sidebar sidebar--lg admin-sidebar">
           <header className="sidebar__header">
             <Link to="/admin" className="sidebar__brand">
-              <Tent aria-hidden="true" />
-              <span>Tiba Tiba</span>
+              <img
+                src="/images/icon-admin-white.png"
+                alt=""
+                aria-hidden="true"
+              />
+              <span>Tiba Tiba Camping</span>
             </Link>
           </header>
 
