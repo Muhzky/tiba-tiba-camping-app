@@ -216,7 +216,7 @@ function AdminLayout() {
             </button>
 
             <Link to="/admin" className="font-semibold lg:hidden">
-              Tiba Tiba
+              Tiba Tiba Camping
             </Link>
 
             <div className="ms-auto flex items-center gap-1">
