@@ -8,6 +8,7 @@ import {
   Heart,
   Home,
   Info,
+  LayoutDashboard,
   LogOut,
   Menu,
   Phone,
@@ -129,7 +130,7 @@ function MobileMenuItem({
 }
 
 type AccountLink =
-  '/akun' | '/akun/favorit' | '/akun/pesanan' | '/akun/preferensi'
+  '/admin' | '/akun' | '/akun/favorit' | '/akun/pesanan' | '/akun/preferensi'
 
 function AccountMenuItem({
   to,
@@ -161,6 +162,9 @@ export function Navbar() {
   const queryClient = useQueryClient()
   const { data: user } = useQuery(meOptions)
   const userInitial = user?.name.trim().slice(0, 1).toUpperCase() || '?'
+  // Staff (admin/owner) mendapat pintasan balik ke panel admin dari situs publik.
+  const isStaff = user?.role === 'admin' || user?.role === 'owner'
+  const roleLabel = user?.role === 'owner' ? 'Owner' : 'Admin'
   const { data: cart } = useQuery(cartOptions)
   const signOut = useServerFn(logout)
   const logoutMutation = useMutation({
@@ -274,9 +278,16 @@ export function Navbar() {
                     )}
                   </span>
                   <div className="min-w-0 flex-1">
-                    <p className="truncate text-[13px] font-semibold leading-tight">
-                      {user.name}
-                    </p>
+                    <div className="flex items-center gap-1.5">
+                      <p className="truncate text-[13px] font-semibold leading-tight">
+                        {user.name}
+                      </p>
+                      {isStaff ? (
+                        <span className="shrink-0 rounded-full border border-border/70 px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+                          {roleLabel}
+                        </span>
+                      ) : null}
+                    </div>
                     <p className="truncate text-[11px] leading-tight text-muted-foreground">
                       {user.email}
                     </p>
@@ -285,26 +296,36 @@ export function Navbar() {
 
                 <DropdownMenuSeparator className="my-1.5 bg-border/70" />
 
-                <AccountMenuItem
-                  to="/akun"
-                  icon={Home}
-                  label="Ringkasan akun"
-                />
-                <AccountMenuItem
-                  to="/akun/favorit"
-                  icon={Heart}
-                  label="Favorit"
-                />
-                <AccountMenuItem
-                  to="/akun/pesanan"
-                  icon={Receipt}
-                  label="Riwayat pesanan"
-                />
-                <AccountMenuItem
-                  to="/akun/preferensi"
-                  icon={Settings2}
-                  label="Preferensi"
-                />
+                {isStaff ? (
+                  <AccountMenuItem
+                    to="/admin"
+                    icon={LayoutDashboard}
+                    label="Dashboard admin"
+                  />
+                ) : (
+                  <>
+                    <AccountMenuItem
+                      to="/akun"
+                      icon={Home}
+                      label="Ringkasan akun"
+                    />
+                    <AccountMenuItem
+                      to="/akun/favorit"
+                      icon={Heart}
+                      label="Favorit"
+                    />
+                    <AccountMenuItem
+                      to="/akun/pesanan"
+                      icon={Receipt}
+                      label="Riwayat pesanan"
+                    />
+                    <AccountMenuItem
+                      to="/akun/preferensi"
+                      icon={Settings2}
+                      label="Preferensi"
+                    />
+                  </>
+                )}
 
                 <DropdownMenuSeparator className="my-1.5 bg-border/70" />
                 <DropdownMenuItem
