@@ -23,14 +23,14 @@
  * Semua permukaan, aksen, dan tombol utama monokrom. */
 @theme {
   /* surfaces */
-  --color-background: #f4f5f6;
+  --color-background: #f5f6f8;
   --color-foreground: #0a0a0a;
   --color-surface: #ffffff;
-  --color-surface-2: #eff2f5;
-  --color-surface-3: #e6e9ed;
-  --color-border: #e5e7eb;
-  --color-border-strong: #d1d5db;
-  --color-muted-foreground: #6b7280;
+  --color-surface-2: #f2f4f7;
+  --color-surface-3: #e8ebef;
+  --color-border: #e7e9ee;
+  --color-border-strong: #d3d7df;
+  --color-muted-foreground: #6f7680;
 
   /* primary = hitam */
   --color-primary: #000000;
@@ -38,19 +38,24 @@
   --color-primary-emphasis: #000000;
 
   /* neutral chips & interactional states */
-  --color-neutral: #eff2f5;
+  --color-neutral: #f2f4f7;
   --color-neutral-foreground: #0a0a0a;
-  --color-accent: #f3f4f6;
+  --color-accent: #f4f5f7;
   --color-accent-foreground: #0a0a0a;
   --color-ring: #0a0a0a;
 
-  /* density compact (admin/dashboard) + bentuk & tipografi */
-  --spacing: 0.22rem;
+  /* density + bentuk & tipografi */
+  --spacing: 0.25rem;
   --radius: 0.9rem;
   --font-sans: 'DM Sans Variable', ui-sans-serif, system-ui, sans-serif;
 }
 
 @import '@stisla/style/components.css';
+
+/* Kurva animasi bersama (halus, tanpa overshoot). */
+:root {
+  --admin-ease: cubic-bezier(0.22, 0.61, 0.36, 1);
+}
 
 /* ── Utilities khusus admin ─────────────────────────────────────────────── */
 @utility text-eyebrow {
@@ -110,6 +115,7 @@
   --sidebar-button-icon-color-active: #0a0a0a;
   --sidebar-submenu-border-color: color-mix(in oklch, white 14%, transparent);
   --sidebar-padding-block: calc(var(--spacing) * 5);
+  --sidebar-button-radius: 10px;
   background-color: var(--sidebar-bg);
   color: var(--sidebar-color);
 }
@@ -178,29 +184,25 @@
   }
 }
 
-/* ── Content panel ─────────────────────────────────────────────────────── */
+/* ── Content panel: kanvas abu, kartu putih mengambang di atasnya ──────── */
 .admin-content {
-  --admin-content-px: calc(var(--spacing) * 5);
-  --admin-content-py: calc(var(--spacing) * 6);
+  --admin-content-px: calc(var(--spacing) * 6);
+  --admin-content-py: calc(var(--spacing) * 7);
   flex: 1;
   overflow: clip;
-  background: var(--color-surface);
+  background: transparent;
   padding: var(--admin-content-py) var(--admin-content-px);
-  border-radius: var(--radius-2xl);
-  box-shadow:
-    0 8px 24px -4px color-mix(in oklch, var(--color-primary) 4%, transparent),
-    0 24px 56px -12px color-mix(in oklch, var(--color-primary) 9%, transparent);
 }
 @media (min-width: 48rem) {
   .admin-content {
     --admin-content-px: calc(var(--spacing) * 8);
     --admin-content-py: calc(var(--spacing) * 8);
-    border-radius: var(--radius-2xl) 0 0 var(--radius-2xl);
   }
 }
 @media (max-width: 47.99rem) {
   .admin-content {
-    margin: calc(var(--spacing) * 3);
+    --admin-content-px: calc(var(--spacing) * 4);
+    margin-block-start: calc(var(--spacing) * 3);
   }
 }
 .admin-content__container {
@@ -216,12 +218,221 @@
   }
 }
 
-/* Kartu tanpa tabel: header kartu bersih (judul saja, tanpa garis) */
+/* ── Permukaan & tipografi halaman ─────────────────────────────────────── */
+.admin-content .page {
+  --page-title-font-size: 1.75rem;
+  --page-title-font-weight: 600;
+  --page-description-font-size: 0.875rem;
+}
+.admin-content .card {
+  --card-radius: 16px;
+  --card-border-color: var(--color-border);
+  --card-shadow:
+    0 1px 2px rgb(17 24 39 / 0.04), 0 20px 44px -32px rgb(17 24 39 / 0.45);
+  background: var(--color-surface);
+  transition:
+    transform 240ms var(--admin-ease),
+    box-shadow 240ms var(--admin-ease),
+    border-color 240ms var(--admin-ease);
+}
+.admin-content .card__title {
+  font-size: 0.9375rem;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+/* Toolbar di atas tabel: putih, bukan pita abu */
+.admin-content .card__header--alt {
+  background: transparent;
+  border-bottom-color: var(--color-border);
+}
+.admin-content .card__footer {
+  background: transparent;
+}
+/* Kartu tanpa tabel: header bersih (judul saja, tanpa garis) */
 .admin-content .card:not(:has(.table)) .card__header {
   border-color: transparent;
 }
 .admin-content .card:not(:has(.table)) .card__header + .card__body {
   padding-block-start: 0;
+}
+
+/* ── Tabel: label mikro, baris lapang, hover halus ─────────────────────── */
+.admin-content .table {
+  --table-cell-padding-block: calc(var(--spacing) * 3.5);
+  --table-head-font-size: 0.6875rem;
+  --table-head-font-weight: 600;
+}
+.admin-content .table > thead > tr > * {
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  background: transparent;
+  border-bottom-color: var(--color-border);
+}
+.admin-content .table > tbody > tr > * {
+  border-bottom-color: var(--color-border);
+}
+.admin-content .table > tbody > tr:last-child > * {
+  border-bottom-width: 0;
+}
+.admin-content .table--hover > tbody > tr:hover > * {
+  --table-bg-state: color-mix(
+    in oklch,
+    var(--color-foreground) 3%,
+    transparent
+  );
+}
+
+/* ── Kartu KPI ─────────────────────────────────────────────────────────── */
+.admin-kpi-card {
+  --card-radius: 18px;
+  animation: admin-rise 420ms var(--admin-ease) backwards;
+}
+.admin-kpi-card:nth-child(2) {
+  animation-delay: 50ms;
+}
+.admin-kpi-card:nth-child(3) {
+  animation-delay: 100ms;
+}
+.admin-kpi-card:nth-child(4) {
+  animation-delay: 150ms;
+}
+.admin-kpi-card .card__body {
+  gap: calc(var(--spacing) * 4);
+}
+.admin-kpi-card:hover {
+  --card-border-color: var(--color-border-strong);
+  --card-shadow:
+    0 2px 4px rgb(17 24 39 / 0.05), 0 28px 52px -34px rgb(17 24 39 / 0.5);
+  transform: translateY(-2px);
+}
+.admin-kpi-card__head {
+  display: flex;
+  align-items: center;
+  gap: calc(var(--spacing) * 2.5);
+}
+.admin-kpi-card__label {
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-muted-foreground);
+}
+.admin-kpi-card__value {
+  font-size: 1.625rem;
+  font-weight: 650;
+  line-height: 1.1;
+  letter-spacing: -0.025em;
+  font-variant-numeric: tabular-nums;
+}
+.admin-kpi-card__hint {
+  margin-block-start: calc(var(--spacing) * 1);
+  font-size: 0.75rem;
+  color: var(--color-muted-foreground);
+}
+.admin-kpi-card--attention .admin-kpi-card__value {
+  color: var(--color-warning-emphasis);
+}
+
+/* ── List ringkas (panel operasional) ─────────────────────────────────── */
+.admin-list {
+  display: flex;
+  flex-direction: column;
+}
+.admin-list__row {
+  display: flex;
+  align-items: center;
+  gap: calc(var(--spacing) * 2.5);
+  padding-block: calc(var(--spacing) * 3);
+}
+.admin-list__row + .admin-list__row {
+  border-top: 1px solid var(--color-border);
+}
+.admin-list__label {
+  font-size: 0.8125rem;
+  color: var(--color-muted-foreground);
+}
+.admin-list__value {
+  margin-inline-start: auto;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+.admin-list__value--attention {
+  color: var(--color-warning-emphasis);
+}
+
+/* ── Peringkat produk ─────────────────────────────────────────────────── */
+.admin-rank {
+  display: flex;
+  flex-direction: column;
+}
+.admin-rank__row {
+  display: grid;
+  grid-template-columns: 1.25rem minmax(0, 1fr) auto;
+  align-items: center;
+  column-gap: calc(var(--spacing) * 2.5);
+  padding-block: calc(var(--spacing) * 2.75);
+}
+.admin-rank__row + .admin-rank__row {
+  border-top: 1px solid var(--color-border);
+}
+.admin-rank__index {
+  font-size: 0.75rem;
+  color: var(--color-muted-foreground);
+  font-variant-numeric: tabular-nums;
+}
+.admin-rank__name {
+  display: block;
+  overflow: hidden;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.admin-rank__meta {
+  font-size: 0.6875rem;
+  color: var(--color-muted-foreground);
+}
+.admin-rank__value {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+.admin-panel-meta {
+  font-size: 0.75rem;
+  color: var(--color-muted-foreground);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── Animasi masuk halaman (halus; hormati reduced motion) ────────────── */
+@keyframes admin-rise {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+.admin-content .page__body > * {
+  animation: admin-rise 430ms var(--admin-ease) backwards;
+}
+.admin-content .page__body > :nth-child(2) {
+  animation-delay: 70ms;
+}
+.admin-content .page__body > :nth-child(3) {
+  animation-delay: 140ms;
+}
+.admin-content .page__body > :nth-child(4) {
+  animation-delay: 210ms;
+}
+@media (prefers-reduced-motion: reduce) {
+  .admin-content .page__body > *,
+  .admin-kpi-card {
+    animation: none;
+    transition: none;
+  }
 }
 
 /* ── Stat cards (gaya overview) ────────────────────────────────────────── */
@@ -250,7 +461,7 @@
 /* ── Chart ─────────────────────────────────────────────────────────────── */
 .admin-chart {
   position: relative;
-  height: 260px;
+  height: 300px;
 }
 
 /* ── Sticky action bar (halaman form) ──────────────────────────────────── */
