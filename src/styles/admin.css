@@ -77,9 +77,9 @@
   flex-direction: column;
 }
 
-/* Topbar (kerangka .navbar Stisla) */
+/* Topbar (kerangka .navbar Stisla) — transparan: menyatu dengan latar halaman */
 .admin-main > .navbar {
-  --navbar-bg: var(--color-surface);
+  --navbar-bg: transparent;
   --navbar-padding-inline: calc(var(--spacing) * 5);
   --navbar-padding-block: 0;
   --menu-shadow: var(--shadow-xl);
@@ -88,8 +88,8 @@
   position: sticky;
   top: 0;
   z-index: 999;
-  background-color: var(--navbar-bg);
-  border-bottom: var(--st-border-width) solid var(--color-border);
+  background-color: transparent;
+  border-bottom: 0;
 }
 .admin-main > .navbar .avatar {
   --avatar-size: 1.75rem;
