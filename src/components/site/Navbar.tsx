@@ -160,6 +160,7 @@ export function Navbar() {
   const [open, setOpen] = useState(false)
   const queryClient = useQueryClient()
   const { data: user } = useQuery(meOptions)
+  const userInitial = user?.name.trim().slice(0, 1).toUpperCase() || '?'
   const { data: cart } = useQuery(cartOptions)
   const signOut = useServerFn(logout)
   const logoutMutation = useMutation({
@@ -233,15 +234,26 @@ export function Navbar() {
             </Link>
           </Button>
           {user ? (
-            <DropdownMenu>
+            // Non-modal: menu profil tidak perlu mengunci scroll halaman.
+            // Mode modal memasang overflow:hidden pada <body>; scrollbar hilang
+            // dan navbar fixed ikut bergeser karena tidak dapat kompensasinya.
+            <DropdownMenu modal={false}>
               <DropdownMenuTrigger asChild>
                 <Button
                   variant="outline"
                   size="icon"
                   aria-label={`Akun ${user.name}`}
-                  className="rounded-full font-semibold"
+                  className="overflow-hidden rounded-full p-0 font-semibold"
                 >
-                  {user.name.slice(0, 1).toUpperCase()}
+                  {user.image ? (
+                    <img
+                      src={user.image}
+                      alt=""
+                      className="size-full object-cover"
+                    />
+                  ) : (
+                    userInitial
+                  )}
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent
@@ -250,8 +262,16 @@ export function Navbar() {
                 className="w-60 rounded-xl p-1.5 shadow-lg"
               >
                 <div className="flex items-center gap-2.5 px-2 pb-2 pt-1.5">
-                  <span className="grid size-8 shrink-0 place-items-center rounded-full bg-primary text-xs font-semibold text-primary-foreground">
-                    {user.name.slice(0, 1).toUpperCase()}
+                  <span className="grid size-8 shrink-0 place-items-center overflow-hidden rounded-full bg-primary text-xs font-semibold text-primary-foreground">
+                    {user.image ? (
+                      <img
+                        src={user.image}
+                        alt=""
+                        className="size-full object-cover"
+                      />
+                    ) : (
+                      userInitial
+                    )}
                   </span>
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-[13px] font-semibold leading-tight">

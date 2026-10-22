@@ -169,3 +169,22 @@
     }
   }
 }
+
+/* ── Scroll lock Radix (Select/Sheet/Dialog) ────────────────────────────────
+ * Radix mengunci scroll dengan `overflow: hidden` + `margin-right: <lebar
+ * scrollbar>` pada <body>. Tanpa penanganan, scrollbar hilang → lebar layout
+ * berubah → navbar fixed dan konten bergeser saat menu dibuka/ditutup.
+ * Cadangkan gutter selamanya, lalu matikan kompensasi margin Radix (tidak
+ * perlu lagi karena gutter sudah menahan lebar). Diletakkan di luar @layer
+ * agar selector dobel menang atas style Radix yang disuntik belakangan.
+ * @supports menjaga browser lama (mis. Safari < 18.2) tetap memakai perilaku
+ * lama, bukan malah kehilangan kompensasi. */
+@supports (scrollbar-gutter: stable) {
+  html {
+    scrollbar-gutter: stable;
+  }
+
+  body[data-scroll-locked][data-scroll-locked] {
+    margin-right: 0 !important;
+  }
+}

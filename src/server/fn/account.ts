@@ -10,6 +10,7 @@ import {
   productImages,
   products,
   userPreferences,
+  users,
 } from '#/server/db/schema'
 import { queryKeys } from '#/lib/query-keys'
 import { getSessionUser } from '#/server/fn/auth'
@@ -21,6 +22,91 @@ async function requireUser() {
   if (!user) throw new Error('UNAUTHORIZED')
   return user
 }
+
+// ── Profil ───────────────────────────────────────────────────────────────────
+
+const profileColumns = {
+  id: users.id,
+  name: users.name,
+  email: users.email,
+  phone: users.phone,
+  image: users.image,
+  role: users.role,
+  createdAt: users.createdAt,
+}
+
+/** Avatar data URL fallback (used when object storage isn't configured). */
+export const MAX_PROFILE_IMAGE_LENGTH = 400_000
+
+const dataImagePattern =
+  /^data:image\/(?:png|jpeg|webp);base64,[a-z0-9+/]+={0,2}$/i
+
+export const profileSchema = z.object({
+  name: z.string().trim().min(2).max(80),
+  phone: z
+    .string()
+    .trim()
+    .max(20)
+    .refine(
+      (value) => value === '' || /^0\d{8,12}$/.test(value),
+      'Nomor HP tidak valid',
+    )
+    .nullish()
+    .transform((value) => value || null),
+  image: z
+    .string()
+    .trim()
+    .max(MAX_PROFILE_IMAGE_LENGTH)
+    .refine(
+      (value) =>
+        value === '' ||
+        value.startsWith('/') ||
+        /^https?:\/\//i.test(value) ||
+        dataImagePattern.test(value),
+      'URL foto tidak valid',
+    )
+    .nullish()
+    .transform((value) => value || null),
+})
+
+export type ProfileInput = z.infer<typeof profileSchema>
+
+export const getMyProfile = createServerFn({ method: 'GET' }).handler(
+  async () => {
+    const user = await requireUser()
+    const [row] = await db
+      .select(profileColumns)
+      .from(users)
+      .where(eq(users.id, user.id))
+      .limit(1)
+    if (!row) throw new Error('NOT_FOUND')
+    return row
+  },
+)
+
+export const profileOptions = queryOptions({
+  queryKey: [...queryKeys.me(), 'profile'],
+  queryFn: () => getMyProfile(),
+  staleTime: 30_000,
+})
+
+export const updateProfile = createServerFn({ method: 'POST' })
+  .validator(profileSchema)
+  .handler(async ({ data }) => {
+    const user = await requireUser()
+    const [row] = await db
+      .update(users)
+      .set({
+        name: data.name,
+        phone: data.phone,
+        image: data.image,
+        updatedAt: new Date(),
+      })
+      .where(eq(users.id, user.id))
+      .returning(profileColumns)
+    if (!row) throw new Error('NOT_FOUND')
+    return row
+  })
 
 // ── Favorit ──────────────────────────────────────────────────────────────────
 
@@ -54,7 +140,9 @@ export const toggleFavorite = createServerFn({ method: 'POST' })
     if (existing.length > 0) {
       await db
         .delete(favorites)
-        .where(and(eq(favorites.userId, user.id), eq(favorites.productId, data)))
+        .where(
+          and(eq(favorites.userId, user.id), eq(favorites.productId, data)),
+        )
       return { favorited: false }
     }
     await db.insert(favorites).values({ userId: user.id, productId: data })
@@ -62,37 +150,42 @@ export const toggleFavorite = createServerFn({ method: 'POST' })
     return { favorited: true }
   })
 
-export const getFavorites = createServerFn({ method: 'GET' }).handler(async () => {
-  const user = await requireUser()
-  const rows = await db
-    .select({
-      id: products.id,
-      slug: products.slug,
-      name: products.name,
-      categoryName: categories.name,
-      image: productImages.r2Key,
-      salePrice: products.salePrice,
-      discountPercent: products.discountPercent,
-      isRentable: products.isRentable,
-      isPreorder: products.isPreorder,
-      favoritedAt: favorites.createdAt,
-    })
-    .from(favorites)
-    .innerJoin(products, eq(favorites.productId, products.id))
-    .innerJoin(categories, eq(products.categoryId, categories.id))
-    .leftJoin(
-      productImages,
-      and(eq(productImages.productId, products.id), eq(productImages.sort, 0)),
-    )
-    .where(eq(favorites.userId, user.id))
-    .orderBy(desc(favorites.createdAt))
+export const getFavorites = createServerFn({ method: 'GET' }).handler(
+  async () => {
+    const user = await requireUser()
+    const rows = await db
+      .select({
+        id: products.id,
+        slug: products.slug,
+        name: products.name,
+        categoryName: categories.name,
+        image: productImages.r2Key,
+        salePrice: products.salePrice,
+        discountPercent: products.discountPercent,
+        isRentable: products.isRentable,
+        isPreorder: products.isPreorder,
+        favoritedAt: favorites.createdAt,
+      })
+      .from(favorites)
+      .innerJoin(products, eq(favorites.productId, products.id))
+      .innerJoin(categories, eq(products.categoryId, categories.id))
+      .leftJoin(
+        productImages,
+        and(
+          eq(productImages.productId, products.id),
+          eq(productImages.sort, 0),
+        ),
+      )
+      .where(eq(favorites.userId, user.id))
+      .orderBy(desc(favorites.createdAt))
 
-  const grouped = await fetchColors(rows.map((r) => r.id))
-  return rows.map((row) => ({
-    ...toCard({ ...row, colors: grouped.get(row.id) ?? [] }),
-    favoritedAt: row.favoritedAt,
-  }))
-})
+    const grouped = await fetchColors(rows.map((r) => r.id))
+    return rows.map((row) => ({
+      ...toCard({ ...row, colors: grouped.get(row.id) ?? [] }),
+      favoritedAt: row.favoritedAt,
+    }))
+  },
+)
 
 export const favoritesOptions = queryOptions({
   queryKey: [...queryKeys.me(), 'favorites'],
@@ -114,14 +207,16 @@ export const addressSchema = z.object({
 
 export type AddressInput = z.infer<typeof addressSchema>
 
-export const listAddresses = createServerFn({ method: 'GET' }).handler(async () => {
-  const user = await requireUser()
-  return db
-    .select()
-    .from(addresses)
-    .where(eq(addresses.userId, user.id))
-    .orderBy(desc(addresses.isDefault), desc(addresses.createdAt))
-})
+export const listAddresses = createServerFn({ method: 'GET' }).handler(
+  async () => {
+    const user = await requireUser()
+    return db
+      .select()
+      .from(addresses)
+      .where(eq(addresses.userId, user.id))
+      .orderBy(desc(addresses.isDefault), desc(addresses.createdAt))
+  },
+)
 
 export const addressesOptions = queryOptions({
   queryKey: [...queryKeys.me(), 'addresses'],
@@ -169,14 +264,16 @@ export const preferenceSchema = z.object({
 
 export type PreferenceInput = z.infer<typeof preferenceSchema>
 
-export const getPreferences = createServerFn({ method: 'GET' }).handler(async () => {
-  const user = await requireUser()
-  const rows = await db
-    .select()
-    .from(userPreferences)
-    .where(eq(userPreferences.userId, user.id))
-  return rows[0] ?? null
-})
+export const getPreferences = createServerFn({ method: 'GET' }).handler(
+  async () => {
+    const user = await requireUser()
+    const rows = await db
+      .select()
+      .from(userPreferences)
+      .where(eq(userPreferences.userId, user.id))
+    return rows[0] ?? null
+  },
+)
 
 export const preferencesOptions = queryOptions({
   queryKey: [...queryKeys.me(), 'preferences'],
@@ -225,13 +322,13 @@ export const getRecommendationProfile = createServerFn({
 
   const hasPreferences = Boolean(
     prefs &&
-      (prefs.categories.length > 0 ||
-        prefs.budgetMin != null ||
-        prefs.budgetMax != null ||
-        prefs.partySize != null ||
-        prefs.conditions.length > 0 ||
-        prefs.style.length > 0 ||
-        prefs.preferMode !== 'any'),
+    (prefs.categories.length > 0 ||
+      prefs.budgetMin != null ||
+      prefs.budgetMax != null ||
+      prefs.partySize != null ||
+      prefs.conditions.length > 0 ||
+      prefs.style.length > 0 ||
+      prefs.preferMode !== 'any'),
   )
 
   return {
