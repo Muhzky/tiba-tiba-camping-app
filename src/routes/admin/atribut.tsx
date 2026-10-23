@@ -3,7 +3,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useServerFn } from '@tanstack/react-start'
 import { useState } from 'react'
 import { toast } from 'sonner'
-import { Plus } from 'lucide-react'
+import { BookOpen, Plus, SearchX, Tags } from 'lucide-react'
 import {
   attributesOptions,
   deleteAttribute,
@@ -16,6 +16,8 @@ import { AdminPage } from '#/components/admin/page'
 import { AdminCard } from '#/components/admin/card'
 import { AdminTable } from '#/components/admin/table'
 import { AdminPagination } from '#/components/admin/pagination'
+import { EmptyState } from '#/components/admin/empty'
+import { StatusBadge } from '#/components/admin/badge'
 import { Field, SearchInput, SelectInput } from '#/components/admin/field'
 import { AdminButton, buttonClass } from '#/components/admin/button'
 
@@ -31,6 +33,13 @@ const KIND_LABEL: Record<string, string> = {
   synonym: 'Sinonim',
   tag: 'Tag',
   stopword: 'Stopword',
+}
+
+const TYPE_LABEL: Record<string, string> = {
+  text: 'Teks',
+  number: 'Angka',
+  enum: 'Enum',
+  boolean: 'Ya/Tidak',
 }
 
 type AttrForm = {
@@ -123,76 +132,89 @@ function AtributPage() {
       description="Atur spesifikasi produk dan kosakata pencarian (sinonim, tag, stopword)."
     >
       <div className="grid grid-cols-1 items-start gap-4 lg:grid-cols-2">
-        <AdminCard title="Atribut produk" bodyClassName="p-0">
-          <div className="p-4">
-            <AdminTable
-              head={
-                <>
-                  <th scope="col">Nama</th>
-                  <th scope="col">Key</th>
-                  <th scope="col">Tipe</th>
-                  <th scope="col" className="text-right">
-                    Bobot
-                  </th>
-                  <th scope="col" />
-                </>
-              }
-            >
-              {attributes.map((a) => (
-                <tr key={a.id}>
-                  <td>{a.name}</td>
-                  <td>
-                    <code>{a.key}</code>
-                  </td>
-                  <td>{a.type}</td>
-                  <td className="text-right">{a.weight}</td>
-                  <td>
-                    <div className="flex flex-wrap justify-end gap-1">
-                      <AdminButton
-                        size="sm"
-                        variant="neutral"
-                        disabled={busy}
-                        onClick={() =>
-                          setAttr({
-                            id: a.id,
-                            name: a.name,
-                            key: a.key,
-                            type: a.type,
-                            allowedCsv: (a.allowedValues ?? []).map(String).join(', '),
-                            weight: String(a.weight),
-                            isFilterable: a.isFilterable,
-                            showInSpec: a.showInSpec,
-                          })
-                        }
-                      >
-                        Edit
-                      </AdminButton>
-                      <AdminButton
-                        size="sm"
-                        variant="outline"
-                        disabled={busy}
-                        onClick={() =>
-                          void run(() => delAttrFn({ data: { id: a.id } }), 'Atribut dihapus.')
-                        }
-                      >
-                        Hapus
-                      </AdminButton>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-              {attributes.length === 0 ? (
-                <tr>
-                  <td colSpan={5} className="text-center text-muted-foreground">
-                    Belum ada atribut.
-                  </td>
-                </tr>
-              ) : null}
-            </AdminTable>
-          </div>
+        <AdminCard
+          title={
+            <span className="admin-toolbar-title">
+              Atribut produk
+              <span className="admin-toolbar-count">{attributes.length}</span>
+            </span>
+          }
+          bodyClassName="p-0"
+        >
+          <AdminTable
+            head={
+              <>
+                <th scope="col">Nama</th>
+                <th scope="col" className="hidden sm:table-cell">
+                  Key
+                </th>
+                <th scope="col">Tipe</th>
+                <th scope="col" className="text-right">
+                  Bobot
+                </th>
+                <th scope="col" />
+              </>
+            }
+          >
+            {attributes.map((a) => (
+              <tr key={a.id}>
+                <td className="font-medium">{a.name}</td>
+                <td className="hidden sm:table-cell">
+                  <code className="font-mono text-xs text-muted-foreground">{a.key}</code>
+                </td>
+                <td>{TYPE_LABEL[a.type] ?? a.type}</td>
+                <td className="text-right">{a.weight}</td>
+                <td>
+                  <div className="admin-row-actions">
+                    <AdminButton
+                      size="sm"
+                      variant="neutral"
+                      disabled={busy}
+                      onClick={() =>
+                        setAttr({
+                          id: a.id,
+                          name: a.name,
+                          key: a.key,
+                          type: a.type,
+                          allowedCsv: (a.allowedValues ?? []).map(String).join(', '),
+                          weight: String(a.weight),
+                          isFilterable: a.isFilterable,
+                          showInSpec: a.showInSpec,
+                        })
+                      }
+                    >
+                      Edit
+                    </AdminButton>
+                    <AdminButton
+                      size="sm"
+                      variant="outline"
+                      disabled={busy}
+                      onClick={() =>
+                        void run(() => delAttrFn({ data: { id: a.id } }), 'Atribut dihapus.')
+                      }
+                    >
+                      Hapus
+                    </AdminButton>
+                  </div>
+                </td>
+              </tr>
+            ))}
+            {attributes.length === 0 ? (
+              <tr>
+                <td colSpan={5}>
+                  <EmptyState
+                    size="sm"
+                    icon={Tags}
+                    title="Belum ada atribut"
+                    text="Tambahkan atribut pertama lewat formulir di bawah."
+                  />
+                </td>
+              </tr>
+            ) : null}
+          </AdminTable>
 
           <form
-            className="border-t p-4"
+            className="border-t border-border p-4"
             onSubmit={(e) => {
               e.preventDefault()
               void submitAttr()
@@ -298,9 +320,17 @@ function AtributPage() {
           </form>
         </AdminCard>
 
-        <AdminCard title="Kamus pencarian" bodyClassName="p-0">
+        <AdminCard
+          title={
+            <span className="admin-toolbar-title">
+              Kamus pencarian
+              {dict ? <span className="admin-toolbar-count">{dict.total}</span> : null}
+            </span>
+          }
+          bodyClassName="p-0"
+        >
           <form
-            className="flex flex-wrap items-center gap-2 border-b p-4"
+            className="flex flex-wrap items-center gap-2 border-b border-border p-4"
             onSubmit={(e) => {
               e.preventDefault()
               setPage(1)
@@ -333,58 +363,69 @@ function AtributPage() {
             />
           </form>
 
-          <div className="p-4">
-            <AdminTable
-              head={
-                <>
-                  <th scope="col">Istilah</th>
-                  <th scope="col">Kanonik</th>
-                  <th scope="col">Jenis</th>
-                  <th scope="col" />
-                </>
-              }
-            >
-              {(dict?.rows ?? []).map((t) => (
-                <tr key={t.id}>
-                  <td>{t.term}</td>
-                  <td>{t.canonical}</td>
-                  <td>{KIND_LABEL[t.kind] ?? t.kind}</td>
-                  <td>
-                    <div className="flex justify-end">
-                      <AdminButton
-                        size="sm"
-                        variant="outline"
-                        disabled={busy}
-                        onClick={() =>
-                          void run(() => delTermFn({ data: { id: t.id } }), 'Istilah dihapus.')
-                        }
-                      >
-                        Hapus
-                      </AdminButton>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-              {(dict?.rows ?? []).length === 0 ? (
-                <tr>
-                  <td colSpan={4} className="text-center text-muted-foreground">
-                    Tidak ada istilah.
-                  </td>
-                </tr>
-              ) : null}
-            </AdminTable>
+          <AdminTable
+            head={
+              <>
+                <th scope="col">Istilah</th>
+                <th scope="col">Kanonik</th>
+                <th scope="col">Jenis</th>
+                <th scope="col" />
+              </>
+            }
+          >
+            {(dict?.rows ?? []).map((t) => (
+              <tr key={t.id}>
+                <td className="font-medium">{t.term}</td>
+                <td className="text-muted-foreground">{t.canonical}</td>
+                <td>
+                  <StatusBadge tone="neutral">{KIND_LABEL[t.kind] ?? t.kind}</StatusBadge>
+                </td>
+                <td>
+                  <div className="flex justify-end">
+                    <AdminButton
+                      size="sm"
+                      variant="outline"
+                      disabled={busy}
+                      onClick={() =>
+                        void run(() => delTermFn({ data: { id: t.id } }), 'Istilah dihapus.')
+                      }
+                    >
+                      Hapus
+                    </AdminButton>
+                  </div>
+                </td>
+              </tr>
+            ))}
+            {dict && dict.rows.length === 0 ? (
+              <tr>
+                <td colSpan={4}>
+                  <EmptyState
+                    size="sm"
+                    icon={q || kind !== 'all' ? SearchX : BookOpen}
+                    title="Tidak ada istilah"
+                    text={
+                      q || kind !== 'all'
+                        ? 'Coba ubah kata kunci atau filter jenis.'
+                        : 'Tambahkan istilah pertama lewat formulir di bawah.'
+                    }
+                  />
+                </td>
+              </tr>
+            ) : null}
+          </AdminTable>
 
+          {dict && dict.total > 0 ? (
             <AdminPagination
               page={page}
-              pageSize={dict?.pageSize ?? 20}
-              total={dict?.total ?? 0}
+              pageSize={dict.pageSize}
+              total={dict.total}
               unitLabel="istilah"
               onPage={setPage}
             />
-          </div>
+          ) : null}
 
           <form
-            className="border-t p-4"
+            className="border-t border-border p-4"
             onSubmit={(e) => {
               e.preventDefault()
               if (!term.term.trim() || !term.canonical.trim()) {

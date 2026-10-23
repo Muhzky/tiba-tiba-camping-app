@@ -70,16 +70,17 @@ function RekomendasiPage() {
           </button>
         }
       >
-        <div className="grid grid-cols-2 gap-4 text-center sm:grid-cols-4">
+        <div className="admin-metrics">
           {[
-            ['Produk', stats?.products],
-            ['Vektor produk', stats?.vectors],
-            ['Pasangan similar', stats?.similarities],
-            ['Profil pengguna', stats?.profiles],
-          ].map(([label, value]) => (
-            <div key={String(label)}>
-              <div className="text-xs text-muted-foreground">{label}</div>
-              <div className="text-2xl font-semibold">{value ?? '—'}</div>
+            ['Produk', stats?.products, 'produk aktif'],
+            ['Vektor produk', stats?.vectors, 'siap dicari'],
+            ['Pasangan similar', stats?.similarities, 'pasangan mirip'],
+            ['Profil pengguna', stats?.profiles, 'profil tersimpan'],
+          ].map(([label, value, hint]) => (
+            <div key={String(label)} className="admin-metrics__item">
+              <div className="admin-metrics__label">{label}</div>
+              <div className="admin-metrics__value">{value ?? '—'}</div>
+              <div className="admin-metrics__hint">{hint}</div>
             </div>
           ))}
         </div>
@@ -90,7 +91,7 @@ function RekomendasiPage() {
       </AdminCard>
 
       <AdminCard title="Debug per produk">
-        <div className="grid gap-2">
+        <div className="grid gap-2 sm:grid-cols-[minmax(0,18rem)_minmax(0,1fr)]">
           <SearchInput label="produk" placeholder="Cari produk…" value={q} onChange={setQ} />
           <SelectInput
             ariaLabel="Pilih produk"
@@ -138,11 +139,15 @@ function ProductDebug({ id }: { id: string }) {
               <td>{t.term}</td>
               <td>
                 <div className="flex items-center gap-2">
-                  <div
-                    className="h-2 rounded bg-primary"
-                    style={{ width: `${(t.weight / maxWeight) * 60}%` }}
-                  />
-                  <span className="text-xs text-muted-foreground">{t.weight.toFixed(3)}</span>
+                  <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-surface-2">
+                    <div
+                      className="h-full rounded-full bg-primary"
+                      style={{ width: `${(t.weight / maxWeight) * 100}%` }}
+                    />
+                  </div>
+                  <span className="w-12 text-right text-xs text-muted-foreground tabular-nums">
+                    {t.weight.toFixed(3)}
+                  </span>
                 </div>
               </td>
             </tr>
@@ -171,8 +176,8 @@ function ProductDebug({ id }: { id: string }) {
         >
           {detail.similar.map((s) => (
             <tr key={s.id}>
-              <td>{s.name}</td>
-              <td className="text-right font-medium">{s.score.toFixed(4)}</td>
+              <td className="font-medium">{s.name}</td>
+              <td className="text-right font-medium tabular-nums">{s.score.toFixed(4)}</td>
             </tr>
           ))}
           {!detail.similar.length ? (

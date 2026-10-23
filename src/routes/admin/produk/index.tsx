@@ -3,7 +3,7 @@ import { useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useServerFn } from '@tanstack/react-start'
 import { flexRender, stockFeatures, useTable } from '@tanstack/react-table'
-import { Copy, PackageSearch, Pencil, Plus } from 'lucide-react'
+import { Copy, Package, PackageSearch, Pencil, Plus, Power, PowerOff } from 'lucide-react'
 import {
   adminProductsOptions,
   duplicateProduct,
@@ -11,6 +11,7 @@ import {
 } from '#/server/fn/admin'
 import { imageUrl } from '#/server/fn/product'
 import { rupiah } from '#/lib/format'
+import { cn } from '#/lib/utils'
 import { AdminPage } from '#/components/admin/page'
 import { AdminCard } from '#/components/admin/card'
 import { AdminTable } from '#/components/admin/table'
@@ -32,7 +33,7 @@ function ProdukListPage() {
   const [status, setStatus] = useState<'all' | 'active' | 'inactive'>('all')
   const [page, setPage] = useState(PRODUCT_LIST_PARAMS.page)
   const params = { q: q || undefined, status, page }
-  const { data, isLoading } = useQuery(adminProductsOptions(params))
+  const { data, isLoading, isFetching } = useQuery(adminProductsOptions(params))
   const queryClient = useQueryClient()
   const dup = useServerFn(duplicateProduct)
   const toggle = useServerFn(toggleProductActive)
@@ -57,17 +58,20 @@ function ProdukListPage() {
       {
         id: 'gambar',
         header: 'Gambar',
+        meta: { className: 'hidden md:table-cell' },
         cell: ({ row }) =>
           row.original.imageKey ? (
             <img
               src={imageUrl(row.original.imageKey)}
               alt=""
-              width={40}
-              height={40}
-              className="rounded-md object-cover"
+              width={44}
+              height={44}
+              className="admin-product-thumb"
             />
           ) : (
-            <div className="h-10 w-10 rounded-md bg-surface-2" />
+            <span className="admin-product-thumb admin-product-thumb--empty" aria-hidden="true">
+              <Package className="size-5" />
+            </span>
           ),
       },
       {
@@ -75,8 +79,8 @@ function ProdukListPage() {
         header: 'Nama',
         cell: ({ row }) => (
           <>
-            <div className="font-semibold">{row.original.name}</div>
-            <div className="text-sm text-muted-foreground">{row.original.categoryName}</div>
+            <div className="font-medium">{row.original.name}</div>
+            <div className="admin-cell-meta">{row.original.categoryName}</div>
           </>
         ),
       },
@@ -84,25 +88,35 @@ function ProdukListPage() {
         id: 'harga',
         header: 'Harga jual',
         meta: { className: 'text-right' },
-        cell: ({ row }) => <span>{rupiah(row.original.salePrice)}</span>,
+        cell: ({ row }) => <span className="font-medium">{rupiah(row.original.salePrice)}</span>,
       },
       {
         id: 'sewa',
         header: 'Sewa/hari',
         meta: { className: 'text-right' },
-        cell: ({ row }) => (
-          <span>{row.original.rentPricePerDay ? rupiah(row.original.rentPricePerDay) : '—'}</span>
-        ),
+        cell: ({ row }) =>
+          row.original.rentPricePerDay ? (
+            <span className="font-medium">{rupiah(row.original.rentPricePerDay)}</span>
+          ) : (
+            <span className="text-muted-foreground">—</span>
+          ),
       },
       {
         id: 'varian',
         header: 'Varian / Stok',
         meta: { className: 'text-right' },
-        cell: ({ row }) => (
-          <span className="font-medium">
-            {row.original.variantCount} / {row.original.totalStock}
-          </span>
-        ),
+        cell: ({ row }) => {
+          const stock = row.original.totalStock
+          return (
+            <div className="flex flex-col items-end gap-0.5">
+              <span className={cn('admin-stock', stock <= 3 && 'admin-stock--low')}>
+                <span className="admin-stock__num">{stock}</span>
+                <span className="admin-stock__unit">stok</span>
+              </span>
+              <span className="admin-cell-meta">{row.original.variantCount} varian</span>
+            </div>
+          )
+        },
       },
       {
         id: 'status',
@@ -122,7 +136,7 @@ function ProdukListPage() {
         header: 'Aksi',
         meta: { className: 'text-right' },
         cell: ({ row }) => (
-          <div className="flex flex-wrap justify-end gap-1">
+          <div className="admin-row-actions">
             <Link
               to="/admin/produk/form"
               search={{ id: row.original.id }}
@@ -133,7 +147,9 @@ function ProdukListPage() {
             </Link>
             <AdminButton
               size="sm"
+              variant="ghost"
               iconOnly
+              title={`Duplikat ${row.original.name}`}
               aria-label={`Duplikat ${row.original.name}`}
               disabled={dupMutation.isPending}
               onClick={() => dupMutation.mutate(row.original.id)}
@@ -142,13 +158,28 @@ function ProdukListPage() {
             </AdminButton>
             <AdminButton
               size="sm"
-              variant="outline"
+              variant="ghost"
+              iconOnly
+              title={
+                row.original.isActive
+                  ? `Nonaktifkan ${row.original.name}`
+                  : `Aktifkan ${row.original.name}`
+              }
+              aria-label={
+                row.original.isActive
+                  ? `Nonaktifkan ${row.original.name}`
+                  : `Aktifkan ${row.original.name}`
+              }
               disabled={toggleMutation.isPending}
               onClick={() =>
                 toggleMutation.mutate({ id: row.original.id, isActive: !row.original.isActive })
               }
             >
-              {row.original.isActive ? 'Nonaktifkan' : 'Aktifkan'}
+              {row.original.isActive ? (
+                <PowerOff aria-hidden="true" />
+              ) : (
+                <Power aria-hidden="true" />
+              )}
             </AdminButton>
           </div>
         ),
@@ -171,6 +202,12 @@ function ProdukListPage() {
     >
       <AdminCard
         headerAlt
+        title={
+          <span className="admin-toolbar-title">
+            Daftar produk
+            {data ? <span className="admin-toolbar-count">{data.total}</span> : null}
+          </span>
+        }
         actions={
           <>
             <SearchInput
@@ -200,16 +237,6 @@ function ProdukListPage() {
           </>
         }
         bodyClassName="p-0"
-        footer={
-          <AdminPagination
-            page={page}
-            pageSize={data?.pageSize ?? 10}
-            total={data?.total ?? 0}
-            unitLabel="produk"
-            onPage={setPage}
-            disabled={isLoading}
-          />
-        }
       >
         {kosong ? (
           <div className="px-4 py-6">
@@ -233,6 +260,7 @@ function ProdukListPage() {
           </div>
         ) : (
           <AdminTable
+            className={isFetching && !isLoading ? 'admin-table--busy' : undefined}
             head={table.getHeaderGroups().map((hg) =>
               hg.headers.map((h) => (
                 <th
@@ -259,6 +287,14 @@ function ProdukListPage() {
             ))}
           </AdminTable>
         )}
+        <AdminPagination
+          page={page}
+          pageSize={data?.pageSize ?? 10}
+          total={data?.total ?? 0}
+          unitLabel="produk"
+          onPage={setPage}
+          disabled={isLoading}
+        />
       </AdminCard>
     </AdminPage>
   )

@@ -3,7 +3,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useServerFn } from '@tanstack/react-start'
 import { useState } from 'react'
 import { toast } from 'sonner'
-import { KeyRound } from 'lucide-react'
+import { KeyRound, Power, PowerOff, Users } from 'lucide-react'
 import {
   adminUsersOptions,
   resetUserPassword,
@@ -39,7 +39,7 @@ function PenggunaPage() {
   const [resetFor, setResetFor] = useState<string | null>(null)
   const [newPassword, setNewPassword] = useState('')
 
-  const { data } = useQuery(adminUsersOptions({ q: q || undefined, page }))
+  const { data, isFetching } = useQuery(adminUsersOptions({ q: q || undefined, page }))
   const me = useQuery(meOptions).data
   const queryClient = useQueryClient()
 
@@ -70,34 +70,44 @@ function PenggunaPage() {
       title="Pengguna"
       description="Kelola akun, peran, dan status pengguna toko."
     >
-      <AdminCard bodyClassName="p-0">
-        <div className="p-4">
+      <AdminCard
+        headerAlt
+        title={
+          <span className="admin-toolbar-title">
+            Daftar pengguna
+            {data ? <span className="admin-toolbar-count">{data.total}</span> : null}
+          </span>
+        }
+        actions={
           <SearchInput
             label="pengguna"
             placeholder="Cari nama…"
-            className="max-w-xs"
+            className="w-full md:w-64"
             value={q}
             onChange={(value) => {
               setQ(value)
               setPage(1)
             }}
           />
-        </div>
-
+        }
+        bodyClassName="p-0"
+      >
         <AdminTable
+          className={isFetching ? 'admin-table--busy' : undefined}
           head={
             <>
-              <th scope="col">Nama</th>
-              <th scope="col">Email</th>
+              <th scope="col">Pengguna</th>
               <th scope="col">Peran</th>
               <th scope="col">Status</th>
-              <th scope="col" className="text-right">
+              <th scope="col" className="text-right whitespace-nowrap">
                 Pesanan
               </th>
-              <th scope="col" className="text-right">
+              <th scope="col" className="text-right whitespace-nowrap">
                 Total belanja
               </th>
-              <th scope="col">Terdaftar</th>
+              <th scope="col" className="whitespace-nowrap">
+                Terdaftar
+              </th>
               <th scope="col" className="text-right">
                 Aksi
               </th>
@@ -106,11 +116,13 @@ function PenggunaPage() {
         >
           {(data?.rows ?? []).map((u) => (
             <tr key={u.id}>
-              <td className="font-semibold">{u.name}</td>
-              <td>{u.email}</td>
+              <td>
+                <div className="font-medium">{u.name}</div>
+                <div className="admin-cell-meta">{u.email}</div>
+              </td>
               <td>
                 <select
-                  className="select max-w-[7.5rem]"
+                  className="select w-32"
                   value={u.role}
                   aria-label={`Peran ${u.name}`}
                   disabled={busy || !isOwner || me.id === u.id}
@@ -132,13 +144,18 @@ function PenggunaPage() {
                 </StatusBadge>
               </td>
               <td className="text-right">{u.orderCount}</td>
-              <td className="text-right">{rupiah(u.totalSpent)}</td>
-              <td>{formatDateTime(u.createdAt)}</td>
-              <td>
-                <div className="flex flex-wrap justify-end gap-1">
+              <td className="text-right font-medium">{rupiah(u.totalSpent)}</td>
+              <td className="whitespace-nowrap text-muted-foreground">
+                {formatDateTime(u.createdAt)}
+              </td>
+              <td className="whitespace-nowrap">
+                <div className="admin-row-actions">
                   <AdminButton
                     size="sm"
-                    variant={u.isActive ? 'outline' : 'primary'}
+                    variant="ghost"
+                    iconOnly
+                    title={u.isActive ? `Nonaktifkan ${u.name}` : `Aktifkan ${u.name}`}
+                    aria-label={u.isActive ? `Nonaktifkan ${u.name}` : `Aktifkan ${u.name}`}
                     disabled={busy || me?.id === u.id}
                     onClick={() =>
                       void run(
@@ -147,11 +164,14 @@ function PenggunaPage() {
                       )
                     }
                   >
-                    {u.isActive ? 'Nonaktifkan' : 'Aktifkan'}
+                    {u.isActive ? <PowerOff aria-hidden="true" /> : <Power aria-hidden="true" />}
                   </AdminButton>
                   <AdminButton
                     size="sm"
-                    variant="neutral"
+                    variant="ghost"
+                    iconOnly
+                    title={`Reset password ${u.name}`}
+                    aria-label={`Reset password ${u.name}`}
                     disabled={busy}
                     onClick={() => {
                       setResetFor(resetFor === u.id ? null : u.id)
@@ -159,7 +179,6 @@ function PenggunaPage() {
                     }}
                   >
                     <KeyRound aria-hidden="true" />
-                    Reset password
                   </AdminButton>
                 </div>
               </td>
@@ -167,9 +186,9 @@ function PenggunaPage() {
           ))}
           {resetFor ? (
             <tr>
-              <td colSpan={8}>
+              <td colSpan={7} className="bg-surface-2">
                 <form
-                  className="flex flex-wrap items-end gap-2"
+                  className="flex max-w-xl flex-wrap items-end gap-2"
                   onSubmit={(e) => {
                     e.preventDefault()
                     void run(async () => {
@@ -204,10 +223,10 @@ function PenggunaPage() {
               </td>
             </tr>
           ) : null}
-          {(data?.rows ?? []).length === 0 ? (
+          {data && data.rows.length === 0 ? (
             <tr>
-              <td colSpan={8}>
-                <EmptyState icon={KeyRound} title="Tidak ada pengguna" text="Coba ubah kata kunci pencarian." />
+              <td colSpan={7}>
+                <EmptyState icon={Users} title="Tidak ada pengguna" text="Coba ubah kata kunci pencarian." />
               </td>
             </tr>
           ) : null}

@@ -10,9 +10,23 @@ import { ORDER_STATUS_LABEL, ORDER_TYPE_LABEL } from '#/lib/order-status'
 import { AdminPage } from '#/components/admin/page'
 import { AdminCard } from '#/components/admin/card'
 import { AdminTable } from '#/components/admin/table'
-import { OrderStatusBadge } from '#/components/admin/badge'
+import { OrderStatusBadge, StatusBadge } from '#/components/admin/badge'
 import { Field, SelectInput } from '#/components/admin/field'
 import { buttonClass } from '#/components/admin/button'
+
+type PaymentTone = 'success' | 'warning' | 'danger' | 'info' | 'neutral'
+
+const PAYMENT_LABEL: Record<string, { label: string; tone: PaymentTone }> = {
+  settlement: { label: 'Lunas', tone: 'success' },
+  capture: { label: 'Lunas', tone: 'success' },
+  paid: { label: 'Lunas', tone: 'success' },
+  pending: { label: 'Menunggu', tone: 'warning' },
+  refund: { label: 'Refund', tone: 'info' },
+  deny: { label: 'Ditolak', tone: 'danger' },
+  cancel: { label: 'Dibatalkan', tone: 'danger' },
+  expire: { label: 'Kedaluwarsa', tone: 'danger' },
+  failure: { label: 'Gagal', tone: 'danger' },
+}
 
 export const Route = createFileRoute('/admin/transaksi/$id')({
   loader: ({ context, params }) =>
@@ -122,7 +136,7 @@ function TransaksiDetailPage() {
                   <th scope="col" className="text-right">
                     Qty
                   </th>
-                  <th scope="col" className="text-right">
+                  <th scope="col" className="text-right whitespace-nowrap">
                     Harga satuan
                   </th>
                 </>
@@ -130,15 +144,24 @@ function TransaksiDetailPage() {
             >
               {detail.items.map((it) => (
                 <tr key={it.id}>
-                  <td>{it.name}</td>
-                  <td>{it.rentalUnitSerial ?? '—'}</td>
+                  <td className="font-medium">{it.name}</td>
+                  <td className="whitespace-nowrap font-mono text-xs text-muted-foreground">
+                    {it.rentalUnitSerial ?? '—'}
+                  </td>
                   <td>
-                    {it.rentStart && it.rentEnd
-                      ? `${formatDateTime(it.rentStart)} → ${formatDateTime(it.rentEnd)} (${it.rentDays} hari)`
-                      : '—'}
+                    {it.rentStart && it.rentEnd ? (
+                      <>
+                        <div>
+                          {formatDateTime(it.rentStart)} → {formatDateTime(it.rentEnd)}
+                        </div>
+                        <div className="admin-cell-meta">{it.rentDays} hari</div>
+                      </>
+                    ) : (
+                      '—'
+                    )}
                   </td>
                   <td className="text-right">{it.qty}</td>
-                  <td className="text-right">{rupiah(it.unitPrice)}</td>
+                  <td className="text-right whitespace-nowrap font-medium">{rupiah(it.unitPrice)}</td>
                 </tr>
               ))}
             </AdminTable>
@@ -157,7 +180,9 @@ function TransaksiDetailPage() {
                       {ORDER_STATUS_LABEL[log.toStatus]}
                     </span>
                     <small className="text-muted-foreground">{formatDateTime(log.createdAt)}</small>
-                    {log.note ? <div className="w-full text-sm">{log.note}</div> : null}
+                    {log.note ? (
+                      <p className="w-full text-sm text-muted-foreground">{log.note}</p>
+                    ) : null}
                   </li>
                 ))}
               </ul>
@@ -172,24 +197,38 @@ function TransaksiDetailPage() {
                 head={
                   <>
                     <th scope="col">Provider</th>
-                    <th scope="col" className="text-right">
+                    <th scope="col" className="text-right whitespace-nowrap">
                       Jumlah
                     </th>
                     <th scope="col">Status</th>
-                    <th scope="col">Signature OK</th>
-                    <th scope="col">Waktu</th>
+                    <th scope="col">Signature</th>
+                    <th scope="col" className="whitespace-nowrap">
+                      Waktu
+                    </th>
                   </>
                 }
               >
-                {detail.payments.map((pay) => (
-                  <tr key={pay.id}>
-                    <td>{pay.provider}</td>
-                    <td className="text-right">{rupiah(pay.grossAmount)}</td>
-                    <td>{pay.status}</td>
-                    <td>{pay.signatureValid ? '✓' : '✗'}</td>
-                    <td>{formatDateTime(pay.createdAt)}</td>
-                  </tr>
-                ))}
+                {detail.payments.map((pay) => {
+                  const badge =
+                    PAYMENT_LABEL[pay.status] ?? { label: pay.status, tone: 'neutral' as const }
+                  return (
+                    <tr key={pay.id}>
+                      <td className="capitalize">{pay.provider}</td>
+                      <td className="text-right whitespace-nowrap font-medium">
+                        {rupiah(pay.grossAmount)}
+                      </td>
+                      <td>
+                        <StatusBadge tone={badge.tone}>{badge.label}</StatusBadge>
+                      </td>
+                      <td className={pay.signatureValid ? 'admin-signature--ok' : 'admin-signature--bad'}>
+                        {pay.signatureValid ? '✓' : '✗'}
+                      </td>
+                      <td className="whitespace-nowrap text-muted-foreground">
+                        {formatDateTime(pay.createdAt)}
+                      </td>
+                    </tr>
+                  )
+                })}
               </AdminTable>
             )}
           </AdminCard>
@@ -255,40 +294,39 @@ function TransaksiDetailPage() {
 
         <div className="flex flex-col gap-4 xl:col-span-4">
           <AdminCard title="Ringkasan">
-            <dl className="flex flex-col gap-2">
-              <div className="flex items-center justify-between">
+            <dl className="flex flex-col gap-2 text-sm">
+              <div className="flex items-center justify-between gap-4">
                 <dt className="text-muted-foreground">Tipe</dt>
-                <dd>
+                <dd className="text-right">
                   {ORDER_TYPE_LABEL[order.type]} · {order.channel}
                 </dd>
               </div>
-              <div className="flex items-center justify-between">
+              <div className="flex items-center justify-between gap-4">
                 <dt className="text-muted-foreground">Subtotal</dt>
-                <dd>{rupiah(order.subtotal)}</dd>
+                <dd className="text-right tabular-nums">{rupiah(order.subtotal)}</dd>
               </div>
-              <div className="flex items-center justify-between">
+              <div className="flex items-center justify-between gap-4">
                 <dt className="text-muted-foreground">Diskon</dt>
-                <dd>{rupiah(order.discount)}</dd>
+                <dd className="text-right tabular-nums">{rupiah(order.discount)}</dd>
               </div>
-              <div className="flex items-center justify-between">
+              <div className="flex items-center justify-between gap-4">
                 <dt className="text-muted-foreground">Ongkir</dt>
-                <dd>{rupiah(order.shippingFee)}</dd>
+                <dd className="text-right tabular-nums">{rupiah(order.shippingFee)}</dd>
               </div>
-              <div className="flex items-center justify-between">
+              <div className="flex items-center justify-between gap-4">
                 <dt className="text-muted-foreground">Deposit</dt>
-                <dd>{rupiah(order.depositTotal)}</dd>
+                <dd className="text-right tabular-nums">{rupiah(order.depositTotal)}</dd>
               </div>
-              <div className="mt-2 flex items-center justify-between border-t pt-2">
+              <div className="mt-2 flex items-center justify-between gap-4 border-t border-border pt-3">
                 <dt className="font-semibold">Grand total</dt>
-                <dd className="font-semibold">{rupiah(order.grandTotal)}</dd>
+                <dd className="text-right font-semibold tabular-nums">{rupiah(order.grandTotal)}</dd>
               </div>
             </dl>
-            <hr className="my-3" />
-            <p className="mb-1">
-              <strong>{detail.customer ?? 'Walk-in'}</strong>
-              <br />
-              {detail.customerEmail}
-            </p>
+            <div className="my-3 border-t border-border" />
+            <div className="flex flex-col gap-0.5">
+              <p className="font-medium">{detail.customer ?? 'Walk-in'}</p>
+              <p className="text-sm text-muted-foreground">{detail.customerEmail}</p>
+            </div>
             {order.shippingAddress ? (
               <p className="mb-1 text-sm text-muted-foreground">
                 {Object.entries(order.shippingAddress)

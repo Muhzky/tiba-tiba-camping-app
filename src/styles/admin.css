@@ -95,6 +95,19 @@
   z-index: 999;
   background-color: transparent;
   border-bottom: 0;
+  transition:
+    background-color 220ms var(--admin-ease),
+    backdrop-filter 220ms var(--admin-ease);
+}
+/* Setelah konten bergulir, topbar jadi frosted tipis supaya teksnya tetap terbaca. */
+.admin-main > .navbar[data-scrolled='true'] {
+  background-color: color-mix(
+    in oklch,
+    var(--color-background) 78%,
+    transparent
+  );
+  backdrop-filter: blur(16px) saturate(1.15);
+  -webkit-backdrop-filter: blur(16px) saturate(1.15);
 }
 .admin-main > .navbar .avatar {
   --avatar-size: 1.75rem;
@@ -402,6 +415,172 @@
   font-size: 0.75rem;
   color: var(--color-muted-foreground);
   font-variant-numeric: tabular-nums;
+}
+
+/* Garis pemisah halus — <hr> bawaan mewarisi currentColor (terlalu tegas). */
+.admin-content hr {
+  border: 0;
+  border-top: 1px solid var(--color-border);
+}
+
+/* Tanda tangan pembayaran (✓/✗) */
+.admin-signature--ok {
+  color: var(--color-success-emphasis);
+  font-weight: 600;
+}
+.admin-signature--bad {
+  color: var(--color-danger-emphasis);
+  font-weight: 600;
+}
+
+/* ── Sel tabel & toolbar (dipakai lintas halaman admin) ───────────────── */
+.admin-toolbar-title {
+  display: inline-flex;
+  align-items: center;
+  gap: calc(var(--spacing) * 2);
+  font-size: 0.875rem;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: var(--color-foreground);
+}
+.admin-toolbar-count {
+  padding: 0 0.5rem;
+  border-radius: 999px;
+  background: var(--color-surface-2);
+  color: var(--color-muted-foreground);
+  font-size: 0.6875rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+.admin-content .table td,
+.admin-content .table th {
+  font-variant-numeric: tabular-nums;
+}
+.admin-cell-meta {
+  font-size: 0.6875rem;
+  color: var(--color-muted-foreground);
+}
+.admin-product-thumb {
+  display: block;
+  width: 2.75rem;
+  height: 2.75rem;
+  border-radius: 12px;
+  object-fit: cover;
+  background: var(--color-surface-2);
+  box-shadow: inset 0 0 0 1px var(--color-border);
+}
+.admin-product-thumb--empty {
+  display: grid;
+  place-items: center;
+  color: var(--color-muted-foreground);
+}
+.admin-stock {
+  display: inline-flex;
+  align-items: baseline;
+  gap: calc(var(--spacing) * 1);
+}
+.admin-stock__num {
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+.admin-stock__unit {
+  font-size: 0.75rem;
+  color: var(--color-muted-foreground);
+}
+.admin-stock--low .admin-stock__num {
+  color: var(--color-warning-emphasis);
+}
+.admin-row-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: calc(var(--spacing) * 1);
+  white-space: nowrap;
+}
+.admin-content .table tbody {
+  transition: opacity 160ms var(--admin-ease);
+}
+.admin-content .table.table--busy tbody {
+  opacity: 0.55;
+}
+/* Toolbar (header kartu berisi pencarian/filter) menumpuk rapi di layar kecil. */
+@media (max-width: 47.99rem) {
+  .admin-content .card__header:has(.input-group) {
+    flex-wrap: wrap;
+    row-gap: calc(var(--spacing) * 3);
+    padding-block: calc(var(--spacing) * 4);
+  }
+  .admin-content .card__header:has(.input-group) > .ms-auto {
+    width: 100%;
+  }
+  .admin-content .card__header:has(.input-group) > .ms-auto > * {
+    flex: 1 1 100%;
+    min-width: 0;
+  }
+  /* Tabel lebar: beri isyarat halus bahwa kolom bisa digeser. */
+  .admin-content .table-responsive {
+    background:
+      linear-gradient(to right, var(--color-surface) 40%, transparent) 0 0 /
+        2.5rem 100% no-repeat local,
+      linear-gradient(to left, var(--color-surface) 40%, transparent) 100% 0 /
+        2.5rem 100% no-repeat local,
+      radial-gradient(farthest-side at 0 50%, rgb(17 24 39 / 0.12), transparent)
+        0 0 / 0.75rem 100% no-repeat scroll,
+      radial-gradient(
+          farthest-side at 100% 50%,
+          rgb(17 24 39 / 0.12),
+          transparent
+        )
+        100% 0 / 0.75rem 100% no-repeat scroll;
+  }
+}
+
+/* ── Deret metrik ringkas (mis. halaman Rekomendasi) ──────────────────── */
+.admin-metrics {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: calc(var(--spacing) * 5) calc(var(--spacing) * 6);
+}
+@media (min-width: 48rem) {
+  .admin-metrics {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+.admin-metrics__item {
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--spacing) * 1.5);
+  min-width: 0;
+  padding-inline-start: calc(var(--spacing) * 5);
+  border-inline-start: 1px solid var(--color-border);
+}
+.admin-metrics__item:first-child {
+  padding-inline-start: 0;
+  border-inline-start: 0;
+}
+@media (max-width: 47.99rem) {
+  .admin-metrics__item:nth-child(odd) {
+    padding-inline-start: 0;
+    border-inline-start: 0;
+  }
+}
+.admin-metrics__label {
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-muted-foreground);
+}
+.admin-metrics__value {
+  font-size: 1.75rem;
+  font-weight: 650;
+  line-height: 1.1;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+}
+.admin-metrics__hint {
+  font-size: 0.75rem;
+  color: var(--color-muted-foreground);
 }
 
 /* ── Animasi masuk halaman (halus; hormati reduced motion) ────────────── */

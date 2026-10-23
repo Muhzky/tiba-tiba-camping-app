@@ -142,7 +142,10 @@ function PosPage() {
                 value={q}
                 onChange={setQ}
               />
-              <button type="submit" className={buttonClass({ variant: 'neutral' })}>
+              <button
+                type="submit"
+                className={buttonClass({ variant: 'neutral', className: 'w-full sm:w-auto' })}
+              >
                 <Search aria-hidden="true" />
                 Cari
               </button>
@@ -152,57 +155,61 @@ function PosPage() {
                 head={
                   <>
                     <th scope="col">Produk</th>
-                    <th scope="col">SKU</th>
-                    <th scope="col" className="text-right">
+                    <th scope="col" className="hidden text-right whitespace-nowrap sm:table-cell">
                       Harga
                     </th>
-                    <th scope="col" className="text-right">
+                    <th scope="col" className="hidden text-right whitespace-nowrap sm:table-cell">
                       Stok
                     </th>
                     <th scope="col" />
                   </>
                 }
               >
-                {(variants ?? []).map((v) => (
-                  <tr key={v.variantId}>
-                    <td>
-                      <div className="flex flex-wrap items-center gap-1">
-                        {v.name}
-                        {mode === 'rent' && v.isRentable && v.rentPricePerDay ? (
-                          <StatusBadge tone="info">{rupiah(v.rentPricePerDay)}/hari</StatusBadge>
-                        ) : null}
-                      </div>
-                    </td>
-                    <td>
-                      <code>{v.sku}</code>
-                    </td>
-                    <td className="text-right">
-                      {mode === 'buy'
-                        ? rupiah(Math.round(v.salePrice - (v.salePrice * v.discountPercent) / 100))
-                        : v.rentPricePerDay
-                          ? rupiah(v.rentPricePerDay)
-                          : '—'}
-                    </td>
-                    <td className="text-right">{v.stock}</td>
-                    <td className="text-right">
-                      <AdminButton
-                        size="sm"
-                        variant="primary"
-                        disabled={
-                          busy ||
-                          (mode === 'rent' && (!v.isRentable || !v.rentPricePerDay)) ||
-                          (mode === 'buy' && v.stock < 1)
-                        }
-                        onClick={() => addLine(v)}
-                      >
-                        Tambah
-                      </AdminButton>
-                    </td>
-                  </tr>
-                ))}
+                {(variants ?? []).map((v) => {
+                  const price =
+                    mode === 'buy'
+                      ? rupiah(Math.round(v.salePrice - (v.salePrice * v.discountPercent) / 100))
+                      : v.rentPricePerDay
+                        ? rupiah(v.rentPricePerDay)
+                        : '—'
+                  return (
+                    <tr key={v.variantId}>
+                      <td>
+                        <div className="flex flex-wrap items-center gap-1">
+                          <span className="font-medium">{v.name}</span>
+                          {mode === 'rent' && v.isRentable && v.rentPricePerDay ? (
+                            <StatusBadge tone="info">{rupiah(v.rentPricePerDay)}/hari</StatusBadge>
+                          ) : null}
+                        </div>
+                        <span className="admin-cell-meta block">
+                          <span className="hidden font-mono sm:inline">{v.sku}</span>
+                          <span className="sm:hidden">
+                            {v.stock} stok · {price}
+                          </span>
+                        </span>
+                      </td>
+                      <td className="hidden text-right whitespace-nowrap sm:table-cell">{price}</td>
+                      <td className="hidden text-right whitespace-nowrap sm:table-cell">{v.stock}</td>
+                      <td className="text-right">
+                        <AdminButton
+                          size="sm"
+                          variant="soft"
+                          disabled={
+                            busy ||
+                            (mode === 'rent' && (!v.isRentable || !v.rentPricePerDay)) ||
+                            (mode === 'buy' && v.stock < 1)
+                          }
+                          onClick={() => addLine(v)}
+                        >
+                          Tambah
+                        </AdminButton>
+                      </td>
+                    </tr>
+                  )
+                })}
                 {(variants ?? []).length === 0 ? (
                   <tr>
-                    <td colSpan={5} className="text-center text-muted-foreground">
+                    <td colSpan={4} className="py-6 text-center text-sm text-muted-foreground">
                       Ketik nama lalu tekan Cari.
                     </td>
                   </tr>
@@ -289,10 +296,10 @@ function PosPage() {
               head={
                 <>
                   <th scope="col">Item</th>
-                  <th scope="col" className="w-[100px]">
+                  <th scope="col" className="w-[7.5rem]">
                     Qty
                   </th>
-                  <th scope="col" className="text-right">
+                  <th scope="col" className="text-right whitespace-nowrap">
                     Subtotal
                   </th>
                   <th scope="col" />
@@ -302,9 +309,14 @@ function PosPage() {
               {lines.map((l, i) => (
                 <tr key={l.variantId}>
                   <td>
-                    {l.name}
+                    <span className="font-medium">{l.name}</span>
                     <br />
-                    <small className="text-muted-foreground">{l.sku}</small>
+                    <small
+                      className="block truncate text-xs text-muted-foreground"
+                      title={l.sku}
+                    >
+                      {l.sku}
+                    </small>
                   </td>
                   <td>
                     <div className="input-group">
@@ -341,7 +353,7 @@ function PosPage() {
                       </button>
                     </div>
                   </td>
-                  <td className="text-right">
+                  <td className="text-right whitespace-nowrap font-medium">
                     {rupiah(
                       mode === 'buy'
                         ? unitBuy(l) * l.qty
@@ -363,7 +375,7 @@ function PosPage() {
               ))}
               {lines.length === 0 ? (
                 <tr>
-                  <td colSpan={4} className="text-center text-muted-foreground">
+                  <td colSpan={4} className="py-6 text-center text-sm text-muted-foreground">
                     Belum ada item.
                   </td>
                 </tr>
@@ -387,7 +399,7 @@ function PosPage() {
                   <dd>{rupiah(deposit)}</dd>
                 </div>
               ) : null}
-              <div className="mt-2 flex items-center justify-between border-t pt-2">
+              <div className="mt-2 flex items-center justify-between border-t border-border pt-2">
                 <dt className="font-semibold">TOTAL</dt>
                 <dd className="font-semibold">{rupiah(grandTotal)}</dd>
               </div>
@@ -403,9 +415,13 @@ function PosPage() {
             </button>
 
             {doneId ? (
-              <p className="mt-3">
+              <p className="mt-3 text-sm">
                 Tersimpan.{' '}
-                <Link to="/admin/transaksi/$id" params={{ id: doneId }}>
+                <Link
+                  to="/admin/transaksi/$id"
+                  params={{ id: doneId }}
+                  className="link font-medium"
+                >
                   Lihat transaksi
                 </Link>
               </p>

@@ -87,7 +87,16 @@ function AdminLayout() {
 
   const [sidebarVisible, setSidebarVisible] = useState(false)
   const [userMenuOpen, setUserMenuOpen] = useState(false)
+  const [scrolled, setScrolled] = useState(false)
   const userMenuRef = useRef<HTMLDivElement | null>(null)
+
+  // Topbar tetap transparan di puncak halaman; beri lapisan frosted saat konten lewat di bawahnya.
+  useEffect(() => {
+    const onScroll = () => setScrolled(window.scrollY > 8)
+    onScroll()
+    window.addEventListener('scroll', onScroll, { passive: true })
+    return () => window.removeEventListener('scroll', onScroll)
+  }, [])
 
   // Tutup drawer mobile saat pindah halaman.
   useEffect(() => {
@@ -203,7 +212,7 @@ function AdminLayout() {
         </aside>
 
         <div className="admin-main">
-          <header className="navbar">
+          <header className="navbar" data-scrolled={scrolled ? 'true' : undefined}>
             <button
               type="button"
               className={buttonClass({ variant: 'ghost', iconOnly: true, className: 'lg:hidden' })}
