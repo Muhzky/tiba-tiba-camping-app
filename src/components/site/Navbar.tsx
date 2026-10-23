@@ -1,5 +1,5 @@
-import { useState } from 'react'
-import { Link } from '@tanstack/react-router'
+import { useState, useEffect } from 'react'
+import { Link, useLocation } from '@tanstack/react-router'
 import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query'
 import { useServerFn } from '@tanstack/react-start'
 import {
@@ -159,6 +159,7 @@ function AccountMenuItem({
 
 export function Navbar() {
   const [open, setOpen] = useState(false)
+  const [isDesktop, setIsDesktop] = useState(false)
   const queryClient = useQueryClient()
   const { data: user } = useQuery(meOptions)
   const userInitial = user?.name.trim().slice(0, 1).toUpperCase() || '?'
@@ -179,6 +180,29 @@ export function Navbar() {
     },
   })
 
+  const location = useLocation()
+
+  // Deteksi breakpoint desktop via JavaScript agar navigasi desktop tetap
+  // tampil dengan benar saat pindah dari layout admin ke publik (Tailwind
+  // md: kadang tidak teraplikasi tepat saat navigasi sisi klien).
+  useEffect(() => {
+    const media = window.matchMedia('(min-width: 768px)')
+    const handleChange = (e: MediaQueryListEvent) => {
+      setIsDesktop(e.matches)
+      if (e.matches) setOpen(false)
+    }
+    setIsDesktop(media.matches)
+    if (media.matches) setOpen(false)
+    media.addEventListener('change', handleChange)
+    return () => media.removeEventListener('change', handleChange)
+  }, [])
+
+  // Tutup sheet mobile saat data autentikasi berubah (mis. login admin lalu
+  // pindah ke halaman publik) dan saat navigasi rute di dalam layout publik.
+  useEffect(() => {
+    setOpen(false)
+  }, [user, location.pathname])
+
   return (
     <header className="fixed inset-x-0 top-0 z-50 px-4 pt-4">
       <div className="mx-auto flex h-16 max-w-7xl items-center justify-between gap-4 rounded-full px-4 md:px-6">
@@ -186,7 +210,7 @@ export function Navbar() {
 
         <nav
           aria-label="Menu utama"
-          className="absolute left-1/2 hidden -translate-x-1/2 items-center gap-1 rounded-full bg-surface p-1 md:flex"
+          className={`absolute left-1/2 -translate-x-1/2 items-center gap-1 rounded-full bg-surface p-1 ${isDesktop ? 'flex' : 'hidden'} md:flex`}
         >
           {menu.map((item) =>
             'to' in item && item.to ? (
@@ -355,54 +379,56 @@ export function Navbar() {
             </Button>
           )}
 
-          <Sheet open={open} onOpenChange={setOpen}>
-            <SheetTrigger asChild>
-              <Button
-                variant="outline"
-                size="icon"
-                aria-label="Buka menu"
-                className="rounded-full md:hidden"
+          {!isDesktop && (
+            <Sheet open={open} onOpenChange={setOpen}>
+              <SheetTrigger asChild>
+                <Button
+                  variant="outline"
+                  size="icon"
+                  aria-label="Buka menu"
+                  className="rounded-full md:hidden"
+                >
+                  <Menu />
+                </Button>
+              </SheetTrigger>
+              <SheetContent
+                side="right"
+                className="flex w-[80vw] max-w-[19rem] flex-col gap-0 p-0 duration-300 ease-out"
               >
-                <Menu />
-              </Button>
-            </SheetTrigger>
-            <SheetContent
-              side="right"
-              className="flex w-[80vw] max-w-[19rem] flex-col gap-0 p-0 duration-300 ease-out"
-            >
-              <div className="flex items-center border-b border-border px-4 py-3.5 pr-12">
-                <SheetTitle className="text-[13px] font-semibold tracking-wide">
-                  Menu
-                </SheetTitle>
-              </div>
+                <div className="flex items-center border-b border-border px-4 py-3.5 pr-12">
+                  <SheetTitle className="text-[13px] font-semibold tracking-wide">
+                    Menu
+                  </SheetTitle>
+                </div>
 
-              <nav
-                aria-label="Menu utama"
-                className="flex flex-1 flex-col gap-1.5 overflow-y-auto p-3"
-              >
-                <p className="px-1.5 pb-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
-                  Jelajahi
-                </p>
-                {menu.map((item, index) => (
-                  <MobileMenuItem
-                    key={item.label}
-                    item={item}
-                    index={index}
-                    onNavigate={() => setOpen(false)}
-                  />
-                ))}
-              </nav>
+                <nav
+                  aria-label="Menu utama"
+                  className="flex flex-1 flex-col gap-1.5 overflow-y-auto p-3"
+                >
+                  <p className="px-1.5 pb-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
+                    Jelajahi
+                  </p>
+                  {menu.map((item, index) => (
+                    <MobileMenuItem
+                      key={item.label}
+                      item={item}
+                      index={index}
+                      onNavigate={() => setOpen(false)}
+                    />
+                  ))}
+                </nav>
 
-              <div className="mt-auto border-t border-border px-4 py-3">
-                <p className="text-[11px] text-muted-foreground">
-                  Senin–Sabtu, 09.00–18.00 WIB
-                </p>
-                <p className="mt-0.5 text-[11px] text-muted-foreground">
-                  halo@tibatibacamping.test
-                </p>
-              </div>
-            </SheetContent>
-          </Sheet>
+                <div className="mt-auto border-t border-border px-4 py-3">
+                  <p className="text-[11px] text-muted-foreground">
+                    Senin–Sabtu, 09.00–18.00 WIB
+                  </p>
+                  <p className="mt-0.5 text-[11px] text-muted-foreground">
+                    halo@tibatibacamping.test
+                  </p>
+                </div>
+              </SheetContent>
+            </Sheet>
+          )}
         </div>
       </div>
     </header>
