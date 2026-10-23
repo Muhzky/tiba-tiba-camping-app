@@ -14,7 +14,9 @@ import {
   Pencil,
   Phone,
   Plus,
+  Receipt,
   Trash2,
+  Wallet,
 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { cn } from 'cn'
@@ -39,8 +41,14 @@ import { Input } from '#/components/ui/input'
 import { Label } from '#/components/ui/label'
 import { Checkbox } from '#/components/ui/checkbox'
 import { Badge } from '#/components/ui/badge'
+import {
+  AccountEmptyState,
+  AccountPageHeader,
+  AccountSection,
+  accountCard,
+  statusToneBadge,
+} from '#/components/site/AccountUI'
 import { rupiah } from '#/lib/format'
-import type { StatusTone } from '#/lib/order-status'
 import {
   ORDER_STATUS_LABEL,
   ORDER_TYPE_LABEL,
@@ -60,13 +68,6 @@ const emptyAddress = {
   province: '',
   postalCode: '',
   isDefault: false,
-}
-
-const statusDot: Record<StatusTone, string> = {
-  pending: 'bg-primary',
-  success: 'bg-support',
-  info: 'bg-info',
-  destructive: 'bg-sale',
 }
 
 function formatDate(value: Date) {
@@ -324,31 +325,25 @@ function AkunHome() {
 
   return (
     <div className="flex flex-col gap-7">
-      <header className="flex flex-wrap items-start justify-between gap-4">
-        <div className="max-w-xl">
-          <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-            Akun saya
-          </p>
-          <h1 className="mt-1.5 text-2xl font-semibold tracking-tight">
-            Ringkasan Akun
-          </h1>
-          <p className="mt-1.5 text-sm leading-relaxed text-muted-foreground">
-            Pantau pesanan dan kelola alamat pengirimanmu dari satu tempat.
-          </p>
-        </div>
-        <Badge
-          variant="outline"
-          className="h-6 rounded-full border-border/70 bg-card px-3 text-[11px] font-medium text-muted-foreground"
-        >
-          {roleLabel}
-        </Badge>
-      </header>
+      <AccountPageHeader
+        title="Ringkasan Akun"
+        description="Pantau pesanan dan kelola alamat pengirimanmu dari satu tempat."
+        actions={
+          <Badge
+            variant="outline"
+            className="h-6 rounded-full border-border/60 bg-card px-3 text-[11px] font-medium text-muted-foreground"
+          >
+            {roleLabel}
+          </Badge>
+        }
+      />
 
       <section
         aria-label="Statistik akun"
-        className="grid grid-cols-2 gap-px overflow-hidden rounded-2xl border border-border/70 bg-border/70 sm:grid-cols-3"
+        className="grid grid-cols-2 gap-px overflow-hidden rounded-2xl border border-border/60 bg-border/70 shadow-sm sm:grid-cols-3"
       >
         <Stat
+          icon={Receipt}
           label="Pesanan"
           value={String(orders?.length ?? 0)}
           note={
@@ -358,11 +353,13 @@ function AkunHome() {
           }
         />
         <Stat
+          icon={Wallet}
           label="Total belanja"
           value={rupiah(totalSpent)}
           note="Tidak termasuk pesanan batal"
         />
         <Stat
+          icon={MapPin}
           label="Alamat"
           value={String(addresses?.length ?? 0)}
           note={
@@ -374,19 +371,11 @@ function AkunHome() {
         />
       </section>
 
-      <section aria-labelledby="profil-heading">
-        <div className="flex flex-wrap items-end justify-between gap-3">
-          <div>
-            <h2
-              id="profil-heading"
-              className="text-sm font-semibold tracking-tight"
-            >
-              Profil
-            </h2>
-            <p className="mt-0.5 text-xs text-muted-foreground">
-              Foto dan data diri yang dipakai saat checkout.
-            </p>
-          </div>
+      <AccountSection
+        id="profil-heading"
+        title="Profil"
+        description="Foto dan data diri yang dipakai saat checkout."
+        action={
           <Button
             type="button"
             size="sm"
@@ -408,9 +397,9 @@ function AkunHome() {
               </>
             )}
           </Button>
-        </div>
-
-        <div className="mt-3 overflow-hidden rounded-2xl border border-border/70 bg-card">
+        }
+      >
+        <div className={cn(accountCard, 'overflow-hidden')}>
           <div className="flex flex-col gap-5 p-5 sm:flex-row sm:items-center">
             <div className="relative shrink-0 self-start">
               <Avatar className="size-16 after:border-border/70 sm:size-20">
@@ -465,7 +454,7 @@ function AkunHome() {
                   ? 'Mengunggah foto…'
                   : 'Data diri yang dipakai untuk pesanan dan pengiriman.'}
               </p>
-              <dl className="mt-4 grid gap-x-6 gap-y-3 text-sm sm:grid-cols-3">
+              <dl className="mt-4 grid gap-x-6 gap-y-3 text-sm sm:grid-cols-[1.5fr_1fr_1fr]">
                 <Biodata icon={Mail} label="Email" value={profileEmail} />
                 <Biodata
                   icon={Phone}
@@ -600,18 +589,12 @@ function AkunHome() {
             </form>
           ) : null}
         </div>
-      </section>
+      </AccountSection>
 
-      <section>
-        <div className="flex flex-wrap items-end justify-between gap-3">
-          <div>
-            <h2 className="text-sm font-semibold tracking-tight">
-              Pesanan terbaru
-            </h2>
-            <p className="mt-0.5 text-xs text-muted-foreground">
-              Tiga transaksi terakhir kamu.
-            </p>
-          </div>
+      <AccountSection
+        title="Pesanan terbaru"
+        description="Tiga transaksi terakhir kamu."
+        action={
           <Link
             to="/akun/pesanan"
             className="inline-flex items-center gap-1 text-xs font-medium text-muted-foreground transition hover:text-foreground"
@@ -619,36 +602,35 @@ function AkunHome() {
             Lihat semua
             <ArrowUpRight className="size-3.5" aria-hidden="true" />
           </Link>
-        </div>
-
+        }
+      >
         {recentOrders.length > 0 ? (
-          <div className="mt-3 overflow-hidden rounded-2xl border border-border/70 bg-card">
-            <div className="divide-y divide-border/70">
+          <div className={cn(accountCard, 'overflow-hidden')}>
+            <div className="divide-y divide-border/60">
               {recentOrders.map((order) => {
                 const tone = orderStatusTone(order.status)
                 return (
                   <Link
                     key={order.id}
                     to="/akun/pesanan"
-                    className="flex flex-wrap items-center gap-x-4 gap-y-2 px-4 py-3.5 transition hover:bg-surface/60"
+                    className="flex flex-wrap items-center gap-x-4 gap-y-2 px-4 py-3.5 transition duration-200 hover:bg-surface/60"
                   >
                     <div className="min-w-0 flex-1">
                       <div className="flex flex-wrap items-center gap-2">
                         <p className="font-mono text-xs font-semibold tracking-tight">
                           {order.code}
                         </p>
-                        <span className="inline-flex items-center gap-1.5 text-[11px] font-medium text-muted-foreground">
-                          <span
-                            className={cn(
-                              'size-1.5 rounded-full',
-                              statusDot[tone],
-                            )}
-                            aria-hidden="true"
-                          />
+                        <Badge
+                          variant="outline"
+                          className={cn(
+                            statusToneBadge[tone],
+                            'h-5 rounded-full px-2 text-[10px] font-medium',
+                          )}
+                        >
                           {ORDER_STATUS_LABEL[order.status] ?? order.status}
-                        </span>
+                        </Badge>
                       </div>
-                      <p className="mt-1 text-xs text-muted-foreground">
+                      <p className="mt-1.5 text-xs text-muted-foreground">
                         {ORDER_TYPE_LABEL[order.type] ?? order.type} ·{' '}
                         {order.itemCount} item · {formatDate(order.createdAt)}
                       </p>
@@ -666,50 +648,48 @@ function AkunHome() {
             </div>
           </div>
         ) : (
-          <div className="mt-3 rounded-2xl border border-dashed border-border/70 px-5 py-6 text-sm text-muted-foreground">
-            Belum ada pesanan.{' '}
-            <Link
-              to="/katalog"
-              className="font-medium text-foreground underline underline-offset-4"
-            >
-              Jelajahi katalog
-            </Link>{' '}
-            untuk mulai.
-          </div>
+          <AccountEmptyState
+            icon={Receipt}
+            title="Belum ada pesanan"
+            description="Gear pertamamu menunggu di katalog — pesanan yang kamu buat akan muncul di sini."
+            action={
+              <Button asChild className="rounded-full">
+                <Link to="/katalog">Jelajahi katalog</Link>
+              </Button>
+            }
+          />
         )}
-      </section>
+      </AccountSection>
 
-      <section>
-        <div className="flex flex-wrap items-end justify-between gap-3">
-          <div>
-            <h2 className="text-sm font-semibold tracking-tight">Alamat</h2>
-            <p className="mt-0.5 text-xs text-muted-foreground">
-              Alamat pengiriman dan pengambilan.
-            </p>
-          </div>
-          <Button
-            type="button"
-            size="sm"
-            variant={showForm ? 'ghost' : 'outline'}
-            className="h-8 rounded-full px-3 text-xs"
-            aria-expanded={showForm}
-            aria-controls="alamat-form"
-            onClick={() => setShowForm((value) => !value)}
-          >
-            {showForm ? (
-              'Tutup'
-            ) : (
-              <>
-                <Plus className="size-3.5" aria-hidden="true" />
-                Tambah alamat
-              </>
-            )}
-          </Button>
-        </div>
-
+      <AccountSection
+        title="Alamat"
+        description="Alamat pengiriman dan pengambilan."
+        action={
+          addresses?.length || showForm ? (
+            <Button
+              type="button"
+              size="sm"
+              variant={showForm ? 'ghost' : 'outline'}
+              className="h-8 rounded-full px-3 text-xs"
+              aria-expanded={showForm}
+              aria-controls="alamat-form"
+              onClick={() => setShowForm((value) => !value)}
+            >
+              {showForm ? (
+                'Tutup'
+              ) : (
+                <>
+                  <Plus className="size-3.5" aria-hidden="true" />
+                  Tambah alamat
+                </>
+              )}
+            </Button>
+          ) : undefined
+        }
+      >
         {addresses?.length ? (
-          <div className="mt-3 overflow-hidden rounded-2xl border border-border/70 bg-card">
-            <div className="divide-y divide-border/70">
+          <div className={cn(accountCard, 'overflow-hidden')}>
+            <div className="divide-y divide-border/60">
               {addresses.map((address) => (
                 <div
                   key={address.id}
@@ -755,22 +735,21 @@ function AkunHome() {
             </div>
           </div>
         ) : !showForm ? (
-          <div className="mt-3 rounded-2xl border border-dashed border-border/70 px-5 py-6">
-            <div className="flex items-start gap-3">
-              <MapPin
-                className="mt-0.5 size-4 shrink-0 text-muted-foreground"
-                aria-hidden="true"
-              />
-              <div>
-                <p className="text-sm font-medium">
-                  Belum ada alamat tersimpan
-                </p>
-                <p className="mt-0.5 text-xs text-muted-foreground">
-                  Tambahkan alamat agar checkout pengiriman lebih cepat.
-                </p>
-              </div>
-            </div>
-          </div>
+          <AccountEmptyState
+            icon={MapPin}
+            title="Belum ada alamat tersimpan"
+            description="Tambahkan alamat agar checkout pengiriman lebih cepat."
+            action={
+              <Button
+                type="button"
+                className="rounded-full"
+                onClick={() => setShowForm(true)}
+              >
+                <Plus className="size-3.5" aria-hidden="true" />
+                Tambah alamat
+              </Button>
+            }
+          />
         ) : null}
 
         {showForm ? (
@@ -780,7 +759,7 @@ function AkunHome() {
               event.preventDefault()
               void form.handleSubmit()
             }}
-            className="mt-4 rounded-2xl border border-border/70 bg-surface/30 p-4 sm:p-5"
+            className="rounded-2xl border border-border/60 bg-surface/30 p-4 sm:p-5"
           >
             <div className="flex items-start justify-between gap-4">
               <div>
@@ -1039,7 +1018,7 @@ function AkunHome() {
             </div>
           </form>
         ) : null}
-      </section>
+      </AccountSection>
     </div>
   )
 }
@@ -1070,11 +1049,13 @@ function Biodata({
 }
 
 function Stat({
+  icon: Icon,
   label,
   value,
   note,
   className,
 }: {
+  icon: LucideIcon
   label: string
   value: string
   note: string
@@ -1082,10 +1063,15 @@ function Stat({
 }) {
   return (
     <div className={cn('bg-card p-4 sm:p-5', className)}>
-      <p className="text-[11px] font-medium uppercase tracking-[0.14em] text-muted-foreground">
-        {label}
-      </p>
-      <p className="mt-2 text-xl font-semibold tracking-tight tabular-nums sm:text-2xl">
+      <div className="flex items-center gap-2">
+        <span className="grid size-7 shrink-0 place-items-center rounded-lg bg-surface text-foreground/70">
+          <Icon className="size-3.5" aria-hidden="true" />
+        </span>
+        <p className="text-[11px] font-medium uppercase tracking-[0.14em] text-muted-foreground">
+          {label}
+        </p>
+      </div>
+      <p className="mt-3 text-xl font-semibold tracking-tight tabular-nums sm:text-2xl">
         {value}
       </p>
       <p className="mt-1 text-[11px] leading-snug text-muted-foreground">

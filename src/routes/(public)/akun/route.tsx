@@ -2,7 +2,15 @@ import { createFileRoute, Link, Outlet, redirect } from '@tanstack/react-router'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useServerFn } from '@tanstack/react-start'
 import { toast } from 'sonner'
-import { Heart, Home, LogOut, Receipt, Settings2 } from 'lucide-react'
+import {
+  Heart,
+  Home,
+  LifeBuoy,
+  LogOut,
+  Mail,
+  Receipt,
+  Settings2,
+} from 'lucide-react'
 import { logout, meOptions } from '#/server/fn/auth'
 import { Button } from '#/components/ui/button'
 
@@ -41,62 +49,88 @@ function AkunLayout() {
   })
 
   return (
-    <div className="mx-auto max-w-6xl px-4 pb-20 pt-32 md:px-8">
-      <div className="flex flex-col gap-8 md:flex-row">
-        <aside className="md:w-60 md:shrink-0">
-          <div className="md:sticky md:top-28">
-            <div className="rounded-2xl border border-border/70 bg-card p-3">
-              <div className="flex items-center gap-2.5 border-b border-border/70 px-2 pb-3 pt-1">
-                <span className="grid size-9 shrink-0 place-items-center overflow-hidden rounded-full bg-primary text-xs font-semibold text-primary-foreground">
-                  {user.image ? (
-                    <img
-                      src={user.image}
-                      alt=""
-                      className="size-full object-cover"
-                    />
-                  ) : (
-                    initial
-                  )}
-                </span>
-                <div className="min-w-0">
-                  <p className="truncate text-[13px] font-semibold leading-tight">
-                    {user.name}
-                  </p>
-                  <p className="truncate text-[11px] leading-tight text-muted-foreground">
-                    {user.email}
-                  </p>
+    <div className="relative min-h-svh">
+      {/* Kanvas abu lembut — dimulai di bawah navbar tetap supaya pill menu utama
+          tetap kontras, lalu membentang sampai tepi bawah viewport. */}
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute inset-x-0 bottom-0 top-24 bg-surface/50"
+      />
+      <div className="relative mx-auto max-w-6xl px-4 pb-24 pt-32 md:px-8">
+        <div className="flex flex-col gap-8 md:flex-row md:gap-10">
+          <aside className="md:w-64 md:shrink-0">
+            <div className="flex flex-col gap-3 md:sticky md:top-28">
+              <div className="rounded-2xl border border-border/60 bg-card p-2.5 shadow-sm">
+                <div className="flex items-center gap-3 px-1.5 pb-3 pt-1.5">
+                  <span className="grid size-10 shrink-0 place-items-center overflow-hidden rounded-full bg-primary text-sm font-semibold text-primary-foreground">
+                    {user.image ? (
+                      <img
+                        src={user.image}
+                        alt=""
+                        className="size-full object-cover"
+                      />
+                    ) : (
+                      initial
+                    )}
+                  </span>
+                  <div className="min-w-0">
+                    <p className="truncate text-[13px] font-semibold leading-tight">
+                      {user.name}
+                    </p>
+                    <p className="truncate text-[11px] leading-tight text-muted-foreground">
+                      {user.email}
+                    </p>
+                  </div>
                 </div>
-              </div>
-              <nav
-                className="mt-2 grid grid-cols-2 gap-1 md:flex md:flex-col"
-                aria-label="Menu akun"
-              >
-                {nav.map((item) => (
-                  <Link
-                    key={item.to}
-                    to={item.to}
-                    activeOptions={{ exact: item.to === '/akun' }}
-                    className="flex min-w-0 items-center gap-2 rounded-lg px-2.5 py-2 text-[13px] font-medium text-muted-foreground transition hover:bg-surface hover:text-foreground data-[status=active]:bg-primary data-[status=active]:text-primary-foreground"
-                  >
-                    <item.icon className="size-4 shrink-0" />
-                    <span className="truncate">{item.label}</span>
-                  </Link>
-                ))}
-                <Button
-                  variant="ghost"
-                  className="col-span-2 h-auto justify-start gap-2 rounded-lg px-2.5 py-2 text-[13px] font-medium text-sale hover:bg-sale/10 hover:text-sale md:col-span-1 md:mt-1"
-                  disabled={logoutMutation.isPending}
-                  onClick={() => logoutMutation.mutate()}
+                <nav
+                  className="grid grid-cols-2 gap-1 border-t border-border/60 pt-2.5 md:flex md:flex-col"
+                  aria-label="Menu akun"
                 >
-                  <LogOut className="size-4" />
-                  Keluar
-                </Button>
-              </nav>
+                  {nav.map((item) => (
+                    <Link
+                      key={item.to}
+                      to={item.to}
+                      activeOptions={{ exact: item.to === '/akun' }}
+                      className="flex min-w-0 items-center gap-2.5 rounded-xl px-3 py-2 text-[13px] font-medium text-muted-foreground transition-colors duration-200 hover:bg-surface hover:text-foreground data-[status=active]:bg-primary data-[status=active]:text-primary-foreground"
+                    >
+                      <item.icon className="size-4 shrink-0" />
+                      <span className="truncate">{item.label}</span>
+                    </Link>
+                  ))}
+                  <Button
+                    variant="ghost"
+                    className="col-span-2 h-auto justify-start gap-2.5 rounded-xl px-3 py-2 text-[13px] font-medium text-sale transition-colors duration-200 hover:bg-sale/10 hover:text-sale md:col-span-1 md:mt-0.5"
+                    disabled={logoutMutation.isPending}
+                    onClick={() => logoutMutation.mutate()}
+                  >
+                    <LogOut className="size-4" />
+                    Keluar
+                  </Button>
+                </nav>
+              </div>
+
+              <div className="hidden rounded-2xl border border-border/60 bg-surface/60 p-4 md:block">
+                <p className="flex items-center gap-2 text-xs font-semibold">
+                  <LifeBuoy className="size-3.5" aria-hidden="true" />
+                  Butuh bantuan?
+                </p>
+                <p className="mt-1.5 text-[11px] leading-relaxed text-muted-foreground">
+                  Tim kami siap membantu untuk pertanyaan seputar pesanan, sewa,
+                  dan pengiriman.
+                </p>
+                <a
+                  href="mailto:halo@tibatibacamping.test"
+                  className="mt-3 inline-flex items-center gap-1.5 text-[11px] font-medium underline-offset-4 hover:underline"
+                >
+                  <Mail className="size-3" aria-hidden="true" />
+                  halo@tibatibacamping.test
+                </a>
+              </div>
             </div>
+          </aside>
+          <div className="min-w-0 flex-1">
+            <Outlet />
           </div>
-        </aside>
-        <div className="min-w-0 flex-1">
-          <Outlet />
         </div>
       </div>
     </div>
