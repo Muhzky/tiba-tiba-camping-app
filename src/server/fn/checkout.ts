@@ -168,7 +168,7 @@ export const getCheckoutPreview = createServerFn({ method: 'POST' })
 
 export const checkoutPreviewOptions = (input: CheckoutInput) =>
   queryOptions({
-    queryKey: queryKeys.checkout(input),
+    queryKey: queryKeys.checkout.detail(input),
     queryFn: () => getCheckoutPreview({ data: input }),
     staleTime: 0,
   })

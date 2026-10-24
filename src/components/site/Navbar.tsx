@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react'
 import { Link, useLocation } from '@tanstack/react-router'
-import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query'
-import { useServerFn } from '@tanstack/react-start'
+import { useQuery } from '@tanstack/react-query'
 import {
   ChevronRight,
   Compass,
@@ -20,9 +19,8 @@ import {
   UserRound,
 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
-import { toast } from 'sonner'
-import { queryKeys } from '#/lib/query-keys'
-import { logout, meOptions } from '#/server/fn/auth'
+import { useLogout } from '#/lib/use-logout'
+import { meOptions } from '#/server/fn/auth'
 import { cartOptions } from '#/server/fn/cart'
 import { Button } from '#/components/ui/button'
 import {
@@ -160,25 +158,13 @@ function AccountMenuItem({
 export function Navbar() {
   const [open, setOpen] = useState(false)
   const [isDesktop, setIsDesktop] = useState(false)
-  const queryClient = useQueryClient()
   const { data: user } = useQuery(meOptions)
   const userInitial = user?.name.trim().slice(0, 1).toUpperCase() || '?'
   // Staff (admin/owner) mendapat pintasan balik ke panel admin dari situs publik.
   const isStaff = user?.role === 'admin' || user?.role === 'owner'
   const roleLabel = user?.role === 'owner' ? 'Owner' : 'Admin'
   const { data: cart } = useQuery(cartOptions)
-  const signOut = useServerFn(logout)
-  const logoutMutation = useMutation({
-    mutationFn: () => signOut(),
-    onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: meOptions.queryKey })
-      // Jangan tampilkan rekomendasi personal milik akun sebelumnya.
-      await queryClient.invalidateQueries({
-        queryKey: queryKeys.products.all(),
-      })
-      toast.success('Kamu sudah keluar.')
-    },
-  })
+  const logoutMutation = useLogout()
 
   const location = useLocation()
 

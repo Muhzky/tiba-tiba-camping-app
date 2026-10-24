@@ -1,7 +1,5 @@
 import { createFileRoute, Link, Outlet, redirect } from '@tanstack/react-router'
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { useServerFn } from '@tanstack/react-start'
-import { toast } from 'sonner'
+import { useQuery } from '@tanstack/react-query'
 import {
   Heart,
   Home,
@@ -11,7 +9,8 @@ import {
   Receipt,
   Settings2,
 } from 'lucide-react'
-import { logout, meOptions } from '#/server/fn/auth'
+import { useLogout } from '#/lib/use-logout'
+import { meOptions } from '#/server/fn/auth'
 import { Button } from '#/components/ui/button'
 
 const nav = [
@@ -35,26 +34,23 @@ export const Route = createFileRoute('/(public)/akun')({
 function AkunLayout() {
   const { user: contextUser } = Route.useRouteContext()
   const { data: me } = useQuery(meOptions)
-  const user = me ?? contextUser
+  // `undefined` = query belum selesai, pakai user dari loader. `null` = sudah
+  // logout, jangan fallback ke context lama (itu yang bikin nama user tetap
+  // tampil setelah Keluar).
+  const user = me === undefined ? contextUser : me
+  const logoutMutation = useLogout()
+
+  if (!user) return null
+
   const initial = user.name.trim().slice(0, 1).toUpperCase() || '?'
-  const queryClient = useQueryClient()
-  const signOut = useServerFn(logout)
-  const logoutMutation = useMutation({
-    mutationFn: () => signOut(),
-    onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: meOptions.queryKey })
-      toast.success('Kamu sudah keluar.')
-      await queryClient.invalidateQueries()
-    },
-  })
 
   return (
     <div className="relative min-h-svh">
-      {/* Kanvas abu lembut — dimulai di bawah navbar tetap supaya pill menu utama
-          tetap kontras, lalu membentang sampai tepi bawah viewport. */}
+      {/* Kanvas abu lembut — membentang dari tepi atas sampai tepi bawah
+          viewport supaya tidak ada pita putih di belakang navbar tetap. */}
       <div
         aria-hidden="true"
-        className="pointer-events-none absolute inset-x-0 bottom-0 top-24 bg-surface/50"
+        className="pointer-events-none absolute inset-0 bg-surface/50"
       />
       <div className="relative mx-auto max-w-6xl px-4 pb-24 pt-32 md:px-8">
         <div className="flex flex-col gap-8 md:flex-row md:gap-10">

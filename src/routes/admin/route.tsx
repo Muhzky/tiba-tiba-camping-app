@@ -1,8 +1,6 @@
-import { createFileRoute, Link, Outlet, redirect, useRouter, useRouterState } from '@tanstack/react-router'
+import { createFileRoute, Link, Outlet, redirect, useRouterState } from '@tanstack/react-router'
 import { useEffect, useRef, useState } from 'react'
 import type { CSSProperties } from 'react'
-import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { useServerFn } from '@tanstack/react-start'
 import {
   Banknote,
   Brain,
@@ -19,7 +17,8 @@ import {
 import type { LucideIcon } from 'lucide-react'
 import { Toaster } from 'sonner'
 import adminCss from '../../styles/admin.css?url'
-import { logout, meOptions } from '#/server/fn/auth'
+import { useLogout } from '#/lib/use-logout'
+import { meOptions } from '#/server/fn/auth'
 import { buttonClass } from '#/components/admin/button'
 import { StatusBadge } from '#/components/admin/badge'
 import { cn } from '#/lib/utils'
@@ -74,16 +73,7 @@ function initialsOf(name: string): string {
 function AdminLayout() {
   const user = Route.useLoaderData()
   const pathname = useRouterState({ select: (s) => s.location.pathname })
-  const router = useRouter()
-  const queryClient = useQueryClient()
-  const signOut = useServerFn(logout)
-  const signOutMutation = useMutation({
-    mutationFn: () => signOut(),
-    onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: meOptions.queryKey })
-      await router.navigate({ to: '/' })
-    },
-  })
+  const signOutMutation = useLogout()
 
   const [sidebarVisible, setSidebarVisible] = useState(false)
   const [userMenuOpen, setUserMenuOpen] = useState(false)

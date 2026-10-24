@@ -139,8 +139,9 @@ function AkunHome() {
   const { data: me } = useQuery(meOptions)
   const { data: profile } = useQuery(profileOptions)
   // `me` is invalidated after a profile update, so the header, sidebar and
-  // navbar all reflect the new name/photo without a reload.
-  const user = me ?? routeUser
+  // navbar all reflect the new name/photo without a reload. `null` berarti
+  // sudah logout — jangan fallback ke user dari loader.
+  const user = me === undefined ? routeUser : me
   const [showForm, setShowForm] = useState(false)
   const [showProfileForm, setShowProfileForm] = useState(false)
   // `undefined` = follow the saved profile image, so the preview stays correct
@@ -212,7 +213,7 @@ function AkunHome() {
 
   const profileForm = useForm({
     defaultValues: {
-      name: profile?.name ?? user.name,
+      name: profile?.name ?? user?.name ?? '',
       phone: profile?.phone ?? '',
       image: profile?.image ?? null,
     },
@@ -227,7 +228,7 @@ function AkunHome() {
 
   function startProfileEdit() {
     profileForm.reset({
-      name: profile?.name ?? user.name,
+      name: profile?.name ?? user?.name ?? '',
       phone: profile?.phone ?? '',
       image: profile?.image ?? null,
     })
@@ -312,6 +313,11 @@ function AkunHome() {
   const defaultAddress =
     addresses?.find((address) => address.isDefault) ?? addresses?.[0]
   const recentOrders = orders?.slice(0, 3) ?? []
+
+  // Layout sudah menjaga ini, tapi jaga-jaga agar tidak merender data user
+  // lama saat query `me` baru saja berubah menjadi null.
+  if (!user) return null
+
   const roleLabel =
     user.role === 'owner'
       ? 'Owner'

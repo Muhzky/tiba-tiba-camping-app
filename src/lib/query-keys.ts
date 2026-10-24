@@ -16,7 +16,10 @@ export const queryKeys = {
     catalog: () => ['rental', 'catalog'] as const,
   },
   cart: () => ['cart'] as const,
-  checkout: (input: unknown) => ['checkout', input] as const,
+  checkout: {
+    all: () => ['checkout'] as const,
+    detail: (input: unknown) => ['checkout', input] as const,
+  },
   orders: {
     my: () => ['orders', 'my'] as const,
   },
