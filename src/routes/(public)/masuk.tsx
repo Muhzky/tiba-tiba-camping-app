@@ -7,7 +7,7 @@ import {
 import { useForm } from '@tanstack/react-form'
 import { useQueryClient } from '@tanstack/react-query'
 import { useState } from 'react'
-import { AlertCircle, ArrowRight, Mail } from 'lucide-react'
+import { AlertCircle, Mail } from 'lucide-react'
 import { toast } from 'sonner'
 import { z } from 'zod'
 import { authClient } from '#/lib/auth-client'
@@ -165,7 +165,6 @@ function LoginPage() {
           ) : (
             <>
               Masuk
-              <ArrowRight className="size-4" aria-hidden="true" />
             </>
           )}
         </Button>
