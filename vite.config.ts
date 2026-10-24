@@ -31,6 +31,24 @@ const securityHeaders = {
 
 const config = defineConfig({
   resolve: { tsconfigPaths: true },
+  server: {
+    // Terowongan dev (ngrok) memakai domain acak tiap start; tanpa ini Vite
+    // menolak request dengan `Blocked request. This host is not allowed.`
+    allowedHosts: [
+      '.ngrok-free.dev',
+      '.ngrok-free.app',
+      '.ngrok.io',
+      '.ngrok.app',
+    ],
+  },
+  preview: {
+    allowedHosts: [
+      '.ngrok-free.dev',
+      '.ngrok-free.app',
+      '.ngrok.io',
+      '.ngrok.app',
+    ],
+  },
   plugins: [
     devtools(),
     nitro({
