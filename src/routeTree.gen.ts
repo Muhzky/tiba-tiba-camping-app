@@ -23,8 +23,10 @@ import { Route as publicSewaRouteImport } from './routes/(public)/sewa'
 import { Route as publicTentangRouteImport } from './routes/(public)/tentang'
 import { Route as AdminIndexRouteImport } from './routes/admin/index'
 import { Route as AdminAtributRouteImport } from './routes/admin/atribut'
+import { Route as AdminPengaturanRouteImport } from './routes/admin/pengaturan'
 import { Route as AdminPosRouteImport } from './routes/admin/pos'
 import { Route as AdminRekomendasiRouteImport } from './routes/admin/rekomendasi'
+import { Route as StrukCodeRouteImport } from './routes/struk/$code'
 import { Route as publicAkunIndexRouteImport } from './routes/(public)/akun/index'
 import { Route as publicAkunFavoritRouteImport } from './routes/(public)/akun/favorit'
 import { Route as publicAkunPesananRouteImport } from './routes/(public)/akun/pesanan'
@@ -108,6 +110,11 @@ const AdminAtributRoute = AdminAtributRouteImport.update({
   path: '/atribut',
   getParentRoute: () => AdminRouteRoute,
 } as any)
+const AdminPengaturanRoute = AdminPengaturanRouteImport.update({
+  id: '/pengaturan',
+  path: '/pengaturan',
+  getParentRoute: () => AdminRouteRoute,
+} as any)
 const AdminPosRoute = AdminPosRouteImport.update({
   id: '/pos',
   path: '/pos',
@@ -117,6 +124,11 @@ const AdminRekomendasiRoute = AdminRekomendasiRouteImport.update({
   id: '/rekomendasi',
   path: '/rekomendasi',
   getParentRoute: () => AdminRouteRoute,
+} as any)
+const StrukCodeRoute = StrukCodeRouteImport.update({
+  id: '/struk/$code',
+  path: '/struk/$code',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const publicAkunIndexRoute = publicAkunIndexRouteImport.update({
   id: '/',
@@ -196,8 +208,10 @@ export interface FileRoutesByFullPath {
   '/sewa': typeof publicSewaRoute
   '/tentang': typeof publicTentangRoute
   '/admin/atribut': typeof AdminAtributRoute
+  '/admin/pengaturan': typeof AdminPengaturanRoute
   '/admin/pos': typeof AdminPosRoute
   '/admin/rekomendasi': typeof AdminRekomendasiRoute
+  '/struk/$code': typeof StrukCodeRoute
   '/': typeof publicIndexRoute
   '/admin/': typeof AdminIndexRoute
   '/akun/favorit': typeof publicAkunFavoritRoute
@@ -224,8 +238,10 @@ export interface FileRoutesByTo {
   '/sewa': typeof publicSewaRoute
   '/tentang': typeof publicTentangRoute
   '/admin/atribut': typeof AdminAtributRoute
+  '/admin/pengaturan': typeof AdminPengaturanRoute
   '/admin/pos': typeof AdminPosRoute
   '/admin/rekomendasi': typeof AdminRekomendasiRoute
+  '/struk/$code': typeof StrukCodeRoute
   '/': typeof publicIndexRoute
   '/admin': typeof AdminIndexRoute
   '/akun/favorit': typeof publicAkunFavoritRoute
@@ -256,8 +272,10 @@ export interface FileRoutesById {
   '/(public)/sewa': typeof publicSewaRoute
   '/(public)/tentang': typeof publicTentangRoute
   '/admin/atribut': typeof AdminAtributRoute
+  '/admin/pengaturan': typeof AdminPengaturanRoute
   '/admin/pos': typeof AdminPosRoute
   '/admin/rekomendasi': typeof AdminRekomendasiRoute
+  '/struk/$code': typeof StrukCodeRoute
   '/(public)/': typeof publicIndexRoute
   '/admin/': typeof AdminIndexRoute
   '/(public)/akun/favorit': typeof publicAkunFavoritRoute
@@ -288,8 +306,10 @@ export interface FileRouteTypes {
     | '/sewa'
     | '/tentang'
     | '/admin/atribut'
+    | '/admin/pengaturan'
     | '/admin/pos'
     | '/admin/rekomendasi'
+    | '/struk/$code'
     | '/'
     | '/admin/'
     | '/akun/favorit'
@@ -316,8 +336,10 @@ export interface FileRouteTypes {
     | '/sewa'
     | '/tentang'
     | '/admin/atribut'
+    | '/admin/pengaturan'
     | '/admin/pos'
     | '/admin/rekomendasi'
+    | '/struk/$code'
     | '/'
     | '/admin'
     | '/akun/favorit'
@@ -347,8 +369,10 @@ export interface FileRouteTypes {
     | '/(public)/sewa'
     | '/(public)/tentang'
     | '/admin/atribut'
+    | '/admin/pengaturan'
     | '/admin/pos'
     | '/admin/rekomendasi'
+    | '/struk/$code'
     | '/(public)/'
     | '/admin/'
     | '/(public)/akun/favorit'
@@ -371,6 +395,7 @@ export interface RootRouteChildren {
   AdminRouteRoute: typeof AdminRouteRouteWithChildren
   RobotsDottxtRoute: typeof RobotsDottxtRoute
   SitemapDotxmlRoute: typeof SitemapDotxmlRoute
+  StrukCodeRoute: typeof StrukCodeRoute
   ApiAuthSplatRoute: typeof ApiAuthSplatRoute
   ApiMidtransNotificationRoute: typeof ApiMidtransNotificationRoute
 }
@@ -475,6 +500,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminAtributRouteImport
       parentRoute: typeof AdminRouteRoute
     }
+    '/admin/pengaturan': {
+      id: '/admin/pengaturan'
+      path: '/pengaturan'
+      fullPath: '/admin/pengaturan'
+      preLoaderRoute: typeof AdminPengaturanRouteImport
+      parentRoute: typeof AdminRouteRoute
+    }
     '/admin/pos': {
       id: '/admin/pos'
       path: '/pos'
@@ -488,6 +520,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/admin/rekomendasi'
       preLoaderRoute: typeof AdminRekomendasiRouteImport
       parentRoute: typeof AdminRouteRoute
+    }
+    '/struk/$code': {
+      id: '/struk/$code'
+      path: '/struk/$code'
+      fullPath: '/struk/$code'
+      preLoaderRoute: typeof StrukCodeRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/(public)/akun/': {
       id: '/(public)/akun/'
@@ -633,6 +672,7 @@ const publicRouteRouteWithChildren = publicRouteRoute._addFileChildren(
 
 interface AdminRouteRouteChildren {
   AdminAtributRoute: typeof AdminAtributRoute
+  AdminPengaturanRoute: typeof AdminPengaturanRoute
   AdminPosRoute: typeof AdminPosRoute
   AdminRekomendasiRoute: typeof AdminRekomendasiRoute
   AdminIndexRoute: typeof AdminIndexRoute
@@ -645,6 +685,7 @@ interface AdminRouteRouteChildren {
 
 const AdminRouteRouteChildren: AdminRouteRouteChildren = {
   AdminAtributRoute: AdminAtributRoute,
+  AdminPengaturanRoute: AdminPengaturanRoute,
   AdminPosRoute: AdminPosRoute,
   AdminRekomendasiRoute: AdminRekomendasiRoute,
   AdminIndexRoute: AdminIndexRoute,
@@ -664,6 +705,7 @@ const rootRouteChildren: RootRouteChildren = {
   AdminRouteRoute: AdminRouteRouteWithChildren,
   RobotsDottxtRoute: RobotsDottxtRoute,
   SitemapDotxmlRoute: SitemapDotxmlRoute,
+  StrukCodeRoute: StrukCodeRoute,
   ApiAuthSplatRoute: ApiAuthSplatRoute,
   ApiMidtransNotificationRoute: ApiMidtransNotificationRoute,
 }

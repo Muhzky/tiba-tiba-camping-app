@@ -14,7 +14,8 @@ import {
   orderStatusTone,
 } from '#/lib/order-status'
 import { Badge } from '#/components/ui/badge'
-import { rupiah } from '#/lib/format'
+import { formatDate, rupiah } from '#/lib/format'
+import { rentalDeadlineInfo } from '#/lib/order-totals'
 import { Skeleton } from '#/components/ui/skeleton'
 import { cn } from 'cn'
 import {
@@ -34,14 +35,6 @@ const TABS = [
   { key: 'rent', label: 'Sewa' },
   { key: 'preorder', label: 'PO' },
 ] as const
-
-function formatDate(value: string | Date) {
-  return new Date(value).toLocaleDateString('id-ID', {
-    day: 'numeric',
-    month: 'short',
-    year: 'numeric',
-  })
-}
 
 function PesananPage() {
   const [tab, setTab] = useState<(typeof TABS)[number]['key']>('semua')
@@ -132,6 +125,14 @@ function PesananPage() {
         <div className="flex flex-col gap-3">
           {filtered.map((order) => {
             const tone = orderStatusTone(order.status)
+            const deadline = rentalDeadlineInfo([order.rentEnd])
+            const deadlineDone = [
+              'completed',
+              'returned',
+              'cancelled',
+              'refunded',
+              'expired',
+            ].includes(order.status)
             return (
               <article
                 key={order.id}
@@ -160,10 +161,32 @@ function PesananPage() {
                     {order.itemCount} item · {formatDate(order.createdAt)}
                   </p>
                   {order.rentStart && order.rentEnd ? (
-                    <p className="mt-1 text-xs font-medium">
-                      Periode sewa: {formatDate(order.rentStart)} –{' '}
-                      {formatDate(order.rentEnd)}
-                    </p>
+                    <>
+                      <p className="mt-1 text-xs font-medium">
+                        Periode sewa: {formatDate(order.rentStart)} –{' '}
+                        {formatDate(order.rentEnd)}
+                      </p>
+                      <p className="mt-0.5 text-xs">
+                        <span className="font-medium">
+                          Tenggat sewa: {formatDate(order.rentEnd)}
+                        </span>
+                        {deadlineDone ? (
+                          <span className="ml-2 text-muted-foreground">Selesai</span>
+                        ) : deadline.lateDays > 0 ? (
+                          <span className="ml-2 font-semibold text-destructive">
+                            Terlambat {deadline.lateDays} hari
+                          </span>
+                        ) : deadline.daysLeft === 0 ? (
+                          <span className="ml-2 text-muted-foreground">
+                            Jatuh tempo hari ini
+                          </span>
+                        ) : deadline.daysLeft !== null ? (
+                          <span className="ml-2 text-muted-foreground">
+                            Sisa {deadline.daysLeft} hari
+                          </span>
+                        ) : null}
+                      </p>
+                    </>
                   ) : null}
                 </div>
                 <div className="flex flex-wrap items-center gap-3">
@@ -178,6 +201,14 @@ function PesananPage() {
                       onClick={() => repayMutation.mutate(order.id)}
                     >
                       Bayar Sekarang
+                    </Button>
+                  ) : null}
+                  {order.paymentStatus === 'paid' ? (
+                    <Button asChild size="sm" variant="outline" className="rounded-full">
+                      <Link to="/struk/$code" params={{ code: order.code }}>
+                        <Receipt className="size-4" aria-hidden="true" />
+                        Struk
+                      </Link>
                     </Button>
                   ) : null}
                 </div>

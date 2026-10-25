@@ -25,9 +25,10 @@ import {
   userProfileVectors,
   users,
 } from '#/server/db/schema'
-import { rentalDays } from '#/lib/order-totals'
+import { rentalDeposit, rentalDays } from '#/lib/order-totals'
+import { customerLabel } from '#/lib/order-status'
 import { orderCode, pickRentUnits, restockBuyOrder } from '#/server/fn/checkout'
-import { slugify } from '#/lib/format'
+import { rupiah, slugify } from '#/lib/format'
 import { getSessionUser  } from '#/server/fn/auth'
 import { rebuildRecommender } from '#/server/recommender/similarity'
 import { buildVectorSpace } from '#/server/recommender/vectorize'
@@ -91,6 +92,7 @@ export type AdminOverview = {
     id: string
     code: string
     customer: string | null
+    customerName: string | null
     type: string
     status: string
     grandTotal: number
@@ -107,11 +109,11 @@ export const getAdminOverview = createServerFn({ method: 'GET' }).handler(
     const monthStart = startOfMonth(now)
 
     const [todayRow] = await db
-      .select({ v: sum(orders.grandTotal) })
+      .select({ v: sum(sql`${orders.grandTotal} - ${orders.depositTotal}`) })
       .from(orders)
       .where(and(eq(orders.paymentStatus, 'paid'), gte(orders.paidAt, dayStart)))
     const [monthRow] = await db
-      .select({ v: sum(orders.grandTotal) })
+      .select({ v: sum(sql`${orders.grandTotal} - ${orders.depositTotal}`) })
       .from(orders)
       .where(and(eq(orders.paymentStatus, 'paid'), gte(orders.paidAt, monthStart)))
 
@@ -144,7 +146,7 @@ export const getAdminOverview = createServerFn({ method: 'GET' }).handler(
     const paidSince = await db
       .select({
         date: sql<string>`to_char(date_trunc('day', ${orders.paidAt}), 'YYYY-MM-DD')`,
-        total: sum(orders.grandTotal),
+        total: sum(sql`${orders.grandTotal} - ${orders.depositTotal}`),
       })
       .from(orders)
       .where(and(eq(orders.paymentStatus, 'paid'), gte(orders.paidAt, new Date(now.getTime() - 30 * 86_400_000))))
@@ -163,6 +165,7 @@ export const getAdminOverview = createServerFn({ method: 'GET' }).handler(
         id: orders.id,
         code: orders.code,
         customer: users.name,
+        customerName: orders.customerName,
         type: orders.type,
         status: orders.status,
         grandTotal: orders.grandTotal,
@@ -497,7 +500,6 @@ export const saveProductSchema = z.object({
   salePrice: z.int().positive(),
   discountPercent: z.int().min(0).max(90).default(0),
   rentPricePerDay: z.int().positive().nullable().default(null),
-  rentDeposit: z.int().min(0).default(0),
   isSellable: z.boolean().default(true),
   isRentable: z.boolean().default(false),
   isPreorder: z.boolean().default(false),
@@ -534,7 +536,6 @@ export const saveProduct = createServerFn({ method: 'POST' })
       salePrice: data.salePrice,
       discountPercent: data.discountPercent,
       rentPricePerDay: data.rentPricePerDay,
-      rentDeposit: data.rentDeposit,
       isSellable: data.isSellable,
       isRentable: data.isRentable,
       isPreorder: data.isPreorder,
@@ -746,6 +747,21 @@ function scheduleRebuild(): void {
 
 // ── Transaksi ────────────────────────────────────────────────────────────────
 
+/** Status order sewa yang unitnya sudah di tangan pelanggan / siap kembali. */
+export const RETURNABLE_RENTAL_STATUSES = [
+  'paid',
+  'processing',
+  'shipped',
+  'ready_pickup',
+  'rented',
+  'overdue',
+] as const
+
+/** Status sewa yang sudah diserahkan (atau siap kembali) dan boleh dicatat pengembaliannya. */
+export function isReturnableRentalStatus(status: string): boolean {
+  return (RETURNABLE_RENTAL_STATUSES as readonly string[]).includes(status)
+}
+
 export const ORDER_TRANSITIONS: Record<string, string[]> = {
   pending_payment: ['paid', 'cancelled'],
   paid: ['processing', 'cancelled'],
@@ -753,8 +769,8 @@ export const ORDER_TRANSITIONS: Record<string, string[]> = {
   shipped: ['completed'],
   ready_pickup: ['completed'],
   awaiting_stock: ['processing', 'cancelled'],
-  rented: ['returned', 'overdue'],
-  overdue: ['returned'],
+  rented: ['overdue'],
+  overdue: [],
   returned: ['completed', 'refunded'],
   completed: [],
   cancelled: [],
@@ -775,7 +791,7 @@ function adminOrderWhere(data: z.infer<typeof adminOrdersSchema>) {
   const conds = []
   if (data.q) {
     conds.push(
-      sql`(${orders.code} ilike ${'%' + data.q + '%'} or ${users.name} ilike ${'%' + data.q + '%'})`,
+      sql`(${orders.code} ilike ${'%' + data.q + '%'} or ${users.name} ilike ${'%' + data.q + '%'} or ${orders.customerName} ilike ${'%' + data.q + '%'})`,
     )
   }
   if (data.status !== 'all') conds.push(sql`${orders.status} = ${data.status}`)
@@ -796,12 +812,14 @@ export const getAdminOrders = createServerFn({ method: 'GET' })
         id: orders.id,
         code: orders.code,
         customer: users.name,
+        customerName: orders.customerName,
         channel: orders.channel,
         type: orders.type,
         status: orders.status,
         paymentStatus: orders.paymentStatus,
         grandTotal: orders.grandTotal,
         itemCount: count(orderItems.id),
+        rentEnd: sql<Date | null>`max(${orderItems.rentEnd})`,
         createdAt: orders.createdAt,
         paidAt: orders.paidAt,
       })
@@ -821,7 +839,11 @@ export const getAdminOrders = createServerFn({ method: 'GET' })
       .where(where)
 
     return {
-      rows: rows.map((r) => ({ ...r, itemCount: Number(r.itemCount) })),
+      rows: rows.map((r) => ({
+        ...r,
+        itemCount: Number(r.itemCount),
+        rentEnd: r.rentEnd ? new Date(r.rentEnd) : null,
+      })),
       total: Number(totalRow?.n ?? 0),
       page: data.page,
       pageSize,
@@ -842,6 +864,7 @@ export const exportAdminOrders = createServerFn({ method: 'GET' })
       .select({
         code: orders.code,
         customer: users.name,
+        customerName: orders.customerName,
         channel: orders.channel,
         type: orders.type,
         status: orders.status,
@@ -861,7 +884,7 @@ export const exportAdminOrders = createServerFn({ method: 'GET' })
     const lines = rows.map((r) =>
       [
         r.code,
-        r.customer ?? 'Walk-in',
+        customerLabel(r.customer, r.customerName),
         r.channel,
         r.type,
         r.status,
@@ -884,6 +907,7 @@ export const getAdminOrder = createServerFn({ method: 'GET' })
       .select({
         order: orders,
         customer: users.name,
+        customerName: orders.customerName,
         customerEmail: users.email,
       })
       .from(orders)
@@ -897,6 +921,7 @@ export const getAdminOrder = createServerFn({ method: 'GET' })
         shippingAddress: (row.order.shippingAddress ?? null) as Record<string, string> | null,
       },
       customer: row.customer,
+      customerName: row.customerName,
       customerEmail: row.customerEmail,
     }
 
@@ -1021,62 +1046,83 @@ export const rentalReturnSchema = z.object({
   depositRefund: z.int().min(0).default(0),
 })
 
+export async function returnRentalCore(
+  data: z.infer<typeof rentalReturnSchema>,
+  actor: { id: string },
+) {
+  const [order] = await db
+    .select()
+    .from(orders)
+    .where(eq(orders.id, data.orderId))
+    .limit(1)
+  if (!order) throw new Error('ORDER_TIDAK_DITEMUKAN')
+  if (order.type !== 'rent') throw new Error('BAKAN_ORDER_SEWA')
+  if (!isReturnableRentalStatus(order.status)) throw new Error('STATUS_SEWA_TIDAK_VALID')
+
+  const items = await db
+    .select()
+    .from(orderItems)
+    .where(eq(orderItems.orderId, data.orderId))
+
+  const returnedAt = new Date()
+  const depositRefunded = Math.min(Math.max(0, data.depositRefund), order.depositTotal)
+
+  await db.transaction(async (tx) => {
+    for (const item of items) {
+      await tx.insert(rentalReturns).values({
+        orderItemId: item.id,
+        returnedAt,
+        conditionNote: data.conditionNote || null,
+        lateDays: data.lateDays,
+      })
+      if (item.rentalUnitId) {
+        await tx
+          .update(rentalUnits)
+          .set({ status: 'available' })
+          .where(eq(rentalUnits.id, item.rentalUnitId))
+      }
+    }
+    await tx
+      .update(orders)
+      .set({
+        status: 'completed',
+        returnedAt,
+        lateDays: data.lateDays,
+        lateFee: data.lateFee,
+        damageFee: data.damageFee,
+        depositRefunded,
+      })
+      .where(eq(orders.id, data.orderId))
+    await tx.insert(orderStatusLogs).values({
+      orderId: data.orderId,
+      fromStatus: order.status,
+      toStatus: 'completed',
+      actorId: actor.id,
+      note: [
+        'Pengembalian · selesai',
+        data.lateDays ? `telat ${data.lateDays} hari` : null,
+        data.lateFee ? `denda telat ${rupiah(data.lateFee)}` : null,
+        data.damageFee ? `denda kerusakan ${rupiah(data.damageFee)}` : null,
+        `deposit kembali ${rupiah(depositRefunded)}`,
+      ]
+        .filter(Boolean)
+        .join(' · '),
+    })
+  })
+  await audit(actor.id, 'order.return_rental', 'order', data.orderId, {
+    lateDays: data.lateDays,
+    lateFee: data.lateFee,
+    damageFee: data.damageFee,
+    depositRefund: depositRefunded,
+  })
+  return { ok: true as const, depositRefunded }
+}
+
 export const returnRental = createServerFn({ method: 'POST' })
   .validator((input: z.infer<typeof rentalReturnSchema>) => rentalReturnSchema.parse(input))
   .handler(async ({ data }) => {
     const actor = await requireAdmin()
-    const [order] = await db
-      .select()
-      .from(orders)
-      .where(eq(orders.id, data.orderId))
-      .limit(1)
-    if (!order) throw new Error('ORDER_TIDAK_DITEMUKAN')
-    if (order.type !== 'rent') throw new Error('BAKAN_ORDER_SEWA')
-    if (!['rented', 'overdue'].includes(order.status)) throw new Error('STATUS_SEWA_TIDAK_VALID')
-
-    const items = await db
-      .select()
-      .from(orderItems)
-      .where(eq(orderItems.orderId, data.orderId))
-
-    await db.transaction(async (tx) => {
-      for (const item of items) {
-        await tx.insert(rentalReturns).values({
-          orderItemId: item.id,
-          conditionNote: data.conditionNote || null,
-          lateDays: data.lateDays,
-          lateFee: data.lateFee,
-          damageFee: data.damageFee,
-          depositRefund: data.depositRefund,
-        })
-        if (item.rentalUnitId) {
-          await tx
-            .update(rentalUnits)
-            .set({ status: 'available' })
-            .where(eq(rentalUnits.id, item.rentalUnitId))
-        }
-      }
-      await tx
-        .update(orders)
-        .set({ status: 'returned' })
-        .where(eq(orders.id, data.orderId))
-      await tx.insert(orderStatusLogs).values({
-        orderId: data.orderId,
-        fromStatus: order.status,
-        toStatus: 'returned',
-        actorId: actor.id,
-        note: `Pengembalian${data.lateDays ? ` · telat ${data.lateDays} hari` : ''}${
-          data.damageFee ? ` · denda kerusakan ${data.damageFee}` : ''
-        }`,
-      })
-    })
-    await audit(actor.id, 'order.return_rental', 'order', data.orderId, {
-      lateDays: data.lateDays,
-      lateFee: data.lateFee,
-      damageFee: data.damageFee,
-      depositRefund: data.depositRefund,
-    })
-    return { ok: true as const }
+    return returnRentalCore(data, actor)
   })
 
 // ── POS Kasir ────────────────────────────────────────────────────────────────
@@ -1106,7 +1152,7 @@ export const posOrderSchema = z
 export async function createPosOrderCore(
   data: z.infer<typeof posOrderSchema>,
   actor: { id: string; name: string },
-): Promise<{ orderId: string }> {
+): Promise<{ orderId: string; code: string }> {
   const variantIds = data.items.map((i) => i.variantId)
   const catalog = await db
     .select({
@@ -1117,7 +1163,6 @@ export async function createPosOrderCore(
       salePrice: products.salePrice,
       discountPercent: products.discountPercent,
       rentPricePerDay: products.rentPricePerDay,
-      rentDeposit: products.rentDeposit,
       isRentable: products.isRentable,
       isActive: products.isActive,
     })
@@ -1137,8 +1182,9 @@ export async function createPosOrderCore(
     if (!row || !row.isActive) throw new Error('PRODUK_TIDAK_DITEMUKAN')
     if (data.mode === 'rent') {
       if (!row.isRentable || !row.rentPricePerDay) throw new Error('PRODUK_TIDAK_DISEWAKAN')
-      subtotal += row.rentPricePerDay * rentDays * line.qty
-      depositTotal += row.rentDeposit * line.qty
+      const lineRent = row.rentPricePerDay * rentDays * line.qty
+      subtotal += lineRent
+      depositTotal += rentalDeposit(lineRent)
     } else {
       const unit = Math.round(row.salePrice - (row.salePrice * row.discountPercent) / 100)
       if (row.stock < line.qty) throw new Error('STOK_KURANG')
@@ -1148,29 +1194,26 @@ export async function createPosOrderCore(
   })
 
   const grandTotal = subtotal + depositTotal
-  const orderId = await db.transaction(async (tx) => {
+  const created = await db.transaction(async (tx) => {
     const [order] = await tx
       .insert(orders)
       .values({
         code: orderCode(),
         userId: null,
+        customerName: data.customerName || null,
         channel: 'pos',
         type: data.mode,
-        status: 'paid',
+        status: data.mode === 'rent' ? 'rented' : 'paid',
         subtotal,
         depositTotal,
         grandTotal,
         paymentStatus: 'paid',
         paidAt: new Date(),
-        notes: [
-          `POS ${data.paymentMethod.toUpperCase()}`,
-          data.customerName ? `Pelanggan: ${data.customerName}` : null,
-          `Kasir: ${actor.name}`,
-        ]
+        notes: [`POS ${data.paymentMethod.toUpperCase()}`, `Kasir: ${actor.name}`]
           .filter(Boolean)
           .join(' · '),
       })
-      .returning({ id: orders.id })
+      .returning({ id: orders.id, code: orders.code })
 
     for (const line of lines) {
       if (data.mode === 'buy') {
@@ -1224,19 +1267,21 @@ export async function createPosOrderCore(
     await tx.insert(orderStatusLogs).values({
       orderId: order.id,
       fromStatus: null,
-      toStatus: 'paid',
+      toStatus: data.mode === 'rent' ? 'rented' : 'paid',
       actorId: actor.id,
-      note: `POS — pembayaran ${data.paymentMethod.toUpperCase()}`,
+      note: `POS — pembayaran ${data.paymentMethod.toUpperCase()}${
+        data.mode === 'rent' ? ' · unit diserahkan' : ''
+      }`,
     })
-    return order.id
+    return order
   })
 
-  await audit(actor.id, 'order.pos', 'order', orderId, {
+  await audit(actor.id, 'order.pos', 'order', created.id, {
     mode: data.mode,
     paymentMethod: data.paymentMethod,
     grandTotal,
   })
-  return { orderId }
+  return { orderId: created.id, code: created.code }
 }
 
 export const createPosOrder = createServerFn({ method: 'POST' })
@@ -1263,7 +1308,6 @@ export const searchPosVariants = createServerFn({ method: 'GET' })
         salePrice: products.salePrice,
         discountPercent: products.discountPercent,
         rentPricePerDay: products.rentPricePerDay,
-        rentDeposit: products.rentDeposit,
         isRentable: products.isRentable,
       })
       .from(productVariants)

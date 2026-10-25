@@ -12,7 +12,7 @@ import {
   products,
   rentalUnits,
 } from '#/server/db/schema'
-import { rentalDays } from '#/lib/order-totals'
+import { rentalDays, rentalDeposit } from '#/lib/order-totals'
 import { queryKeys } from '#/lib/query-keys'
 import { rupiah } from '#/lib/format'
 import { fetchColors, imageUrl } from '#/server/fn/product'
@@ -41,6 +41,7 @@ export const ACTIVE_RENTAL_STATUSES = [
   'pending_payment',
   'paid',
   'processing',
+  'shipped',
   'ready_pickup',
   'rented',
   'overdue',
@@ -53,7 +54,6 @@ export async function getRentalAvailability(
     .select({
       id: products.id,
       rentPricePerDay: products.rentPricePerDay,
-      rentDeposit: products.rentDeposit,
       isRentable: products.isRentable,
     })
     .from(products)
@@ -101,7 +101,7 @@ export async function getRentalAvailability(
     days,
     rentPerDay: product.rentPricePerDay,
     rentTotal: product.rentPricePerDay * days,
-    deposit: product.rentDeposit,
+    deposit: rentalDeposit(product.rentPricePerDay * days),
     freeUnits,
   }
 }
@@ -121,8 +121,6 @@ export type RentalCatalogItem = {
   image: string
   rentPerDay: number
   rentPerDayLabel: string
-  deposit: number
-  depositLabel: string
   stock: number
   colors: Array<{ name: string; hex: string }>
 }
@@ -153,7 +151,6 @@ export const getRentalCatalog = createServerFn({ method: 'GET' }).handler(
         categorySlug: categories.slug,
         image: productImages.r2Key,
         rentPerDay: sql<number>`coalesce(${products.rentPricePerDay}, 0)::int`,
-        deposit: sql<number>`coalesce(${products.rentDeposit}, 0)::int`,
       })
       .from(products)
       .innerJoin(categories, eq(products.categoryId, categories.id))
@@ -199,8 +196,6 @@ export const getRentalCatalog = createServerFn({ method: 'GET' }).handler(
         : '/images/placeholder-product.svg',
       rentPerDay: row.rentPerDay,
       rentPerDayLabel: rupiah(row.rentPerDay),
-      deposit: row.deposit,
-      depositLabel: rupiah(row.deposit),
       stock: stockByProduct.get(row.id) ?? 0,
       colors: colorByProduct.get(row.id) ?? [],
     }))

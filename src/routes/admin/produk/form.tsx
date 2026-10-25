@@ -112,7 +112,6 @@ function ProdukFormPage() {
       salePrice: p ? String(p.salePrice) : '',
       discountPercent: p ? String(p.discountPercent) : '0',
       rentPricePerDay: p?.rentPricePerDay != null ? String(p.rentPricePerDay) : '',
-      rentDeposit: p ? String(p.rentDeposit) : '0',
       isSellable: p?.isSellable ?? true,
       isRentable: p?.isRentable ?? false,
       isPreorder: p?.isPreorder ?? false,
@@ -133,7 +132,6 @@ function ProdukFormPage() {
             salePrice: int(value.salePrice),
             discountPercent: int(value.discountPercent),
             rentPricePerDay: value.rentPricePerDay.trim() === '' ? null : int(value.rentPricePerDay),
-            rentDeposit: int(value.rentDeposit),
             isSellable: value.isSellable,
             isRentable: value.isRentable,
             isPreorder: value.isPreorder,
@@ -401,22 +399,6 @@ function ProdukFormPage() {
                     type="number"
                     min={0}
                     placeholder="0"
-                    value={field.state.value}
-                    onBlur={field.handleBlur}
-                    onChange={(e) => field.handleChange(e.target.value)}
-                  />
-                )}
-              />
-            </Field>
-            <Field label="Deposit sewa (Rp)" htmlFor="product-deposit">
-              <form.Field
-                name="rentDeposit"
-                children={(field) => (
-                  <input
-                    id="product-deposit"
-                    className="input"
-                    type="number"
-                    min={0}
                     value={field.state.value}
                     onBlur={field.handleBlur}
                     onChange={(e) => field.handleChange(e.target.value)}

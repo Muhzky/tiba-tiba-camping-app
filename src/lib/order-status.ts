@@ -42,3 +42,14 @@ export const ORDER_TYPE_LABEL: Record<string, string> = {
   rent: 'Sewa',
   preorder: 'Pre-Order',
 }
+
+/**
+ * Nama pelanggan yang ditampilkan di admin: akun terdaftar lebih dulu,
+ * lalu nama manual dari transaksi POS, terakhir "Walk-in".
+ */
+export function customerLabel(
+  accountName?: string | null,
+  manualName?: string | null,
+): string {
+  return accountName?.trim() || manualName?.trim() || 'Walk-in'
+}

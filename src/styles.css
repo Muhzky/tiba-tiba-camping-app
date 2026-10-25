@@ -188,3 +188,23 @@
     margin-right: 0 !important;
   }
 }
+
+/* ── Struk cetak ────────────────────────────────────────────────────────────
+ * Halaman struk memakai latar netral di layar. Saat dicetak, hanya kertas
+ * struk yang tersisa: toolbar disembunyikan, bayangan dihilangkan, dan warna
+ * watermark tetap tercetak. */
+.receipt-watermark {
+  -webkit-print-color-adjust: exact;
+  print-color-adjust: exact;
+}
+
+@media print {
+  html,
+  body {
+    background: #ffffff !important;
+  }
+
+  .receipt-paper {
+    box-shadow: none !important;
+  }
+}

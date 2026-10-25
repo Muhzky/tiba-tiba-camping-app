@@ -20,6 +20,8 @@ import {
 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { useLogout } from '#/lib/use-logout'
+import { useSiteSettings } from '#/lib/use-site-settings'
+import { openingHoursWithZone, telHref } from '#/lib/site-settings'
 import { meOptions } from '#/server/fn/auth'
 import { cartOptions } from '#/server/fn/cart'
 import { Button } from '#/components/ui/button'
@@ -164,6 +166,7 @@ export function Navbar() {
   const isStaff = user?.role === 'admin' || user?.role === 'owner'
   const roleLabel = user?.role === 'owner' ? 'Owner' : 'Admin'
   const { data: cart } = useQuery(cartOptions)
+  const settings = useSiteSettings()
   const logoutMutation = useLogout()
 
   const location = useLocation()
@@ -406,11 +409,26 @@ export function Navbar() {
 
                 <div className="mt-auto border-t border-border px-4 py-3">
                   <p className="text-[11px] text-muted-foreground">
-                    Senin–Sabtu, 09.00–18.00 WIB
+                    {openingHoursWithZone(settings)}
                   </p>
                   <p className="mt-0.5 text-[11px] text-muted-foreground">
-                    halo@tibatibacamping.test
+                    <a
+                      href={`mailto:${settings.contactEmail}`}
+                      className="hover:text-foreground"
+                    >
+                      {settings.contactEmail}
+                    </a>
                   </p>
+                  {settings.contactPhone ? (
+                    <p className="mt-0.5 text-[11px] text-muted-foreground">
+                      <a
+                        href={telHref(settings.contactPhone)}
+                        className="hover:text-foreground"
+                      >
+                        {settings.contactPhone}
+                      </a>
+                    </p>
+                  ) : null}
                 </div>
               </SheetContent>
             </Sheet>

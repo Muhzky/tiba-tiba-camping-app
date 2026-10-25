@@ -106,7 +106,7 @@ const STEPS: Array<{ title: string; desc: string; icon: LucideIcon }> = [
   },
   {
     title: 'Bayar',
-    desc: 'Bayar biaya sewa plus deposit. Deposit dikembalikan setelah unit kembali dan diperiksa.',
+    desc: 'Bayar biaya sewa plus deposit 50% dari total sewa. Deposit dikembalikan setelah unit kembali dan diperiksa.',
     icon: CreditCard,
   },
   {
@@ -150,7 +150,7 @@ const FAQS = [
   },
   {
     q: 'Apakah deposit dikembalikan?',
-    a: 'Deposit dikembalikan setelah unit diterima kembali dan diperiksa. Denda keterlambatan atau kerusakan, jika ada, dipotong dari deposit.',
+    a: 'Deposit sebesar 50% dari total sewa dikembalikan setelah unit diterima kembali dan diperiksa. Denda keterlambatan atau kerusakan, jika ada, dipotong dari deposit.',
   },
   {
     q: 'Bisa ambil di toko atau harus dikirim?',
@@ -755,7 +755,7 @@ function RentalCard({ item }: { item: RentalCatalogItem }) {
               </span>
             </p>
             <p className="mt-1 text-[11px] text-muted-foreground">
-              Deposit {item.depositLabel}
+              Deposit 50% dari total sewa
             </p>
           </div>
 

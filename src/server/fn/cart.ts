@@ -8,6 +8,7 @@ import { CART_COOKIE, parseCart  } from '#/lib/cart'
 import type {CartLine} from '#/lib/cart';
 import { queryKeys } from '#/lib/query-keys'
 import { imageUrl } from '#/server/fn/product'
+import { rentalDeposit } from '#/lib/order-totals'
 import { getSessionUser } from '#/server/fn/auth'
 import { recordProductEvent } from '#/server/recommender/profile'
 import { readCookie, writeCookie } from '#/server/fn/cookies'
@@ -78,7 +79,6 @@ export async function buildCartView(lines: CartLine[]): Promise<CartView> {
           preorderDpPercent: products.preorderDpPercent,
           isRentable: products.isRentable,
           rentPricePerDay: products.rentPricePerDay,
-          rentDeposit: products.rentDeposit,
           isActive: products.isActive,
           image: productImages.r2Key,
         })
@@ -109,9 +109,9 @@ export async function buildCartView(lines: CartLine[]): Promise<CartView> {
           )
         : 0
     const rentPerDay = row.rentPricePerDay ?? 0
-    const depositLine = line.mode === 'rent' ? (row.rentDeposit ?? 0) * line.qty : 0
     const lineTotal =
       line.mode === 'rent' ? rentPerDay * rentDays * line.qty : unitPrice * line.qty
+    const depositLine = line.mode === 'rent' ? rentalDeposit(lineTotal) : 0
     items.push({
       variantId: line.variantId,
       mode: line.mode,

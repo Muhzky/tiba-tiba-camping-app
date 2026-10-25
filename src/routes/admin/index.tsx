@@ -13,7 +13,7 @@ import {
 } from 'lucide-react'
 import { adminOverviewOptions } from '#/server/fn/admin'
 import { rupiah } from '#/lib/format'
-import { ORDER_TYPE_LABEL } from '#/lib/order-status'
+import { ORDER_TYPE_LABEL, customerLabel } from '#/lib/order-status'
 import { AdminPage } from '#/components/admin/page'
 import { AdminCard } from '#/components/admin/card'
 import { AdminTable } from '#/components/admin/table'
@@ -155,13 +155,13 @@ function OverviewPage() {
           icon={Coins}
           label="Omzet hari ini"
           value={rupiah(data.todayRevenue)}
-          hint="Pembayaran masuk"
+          hint="Tanpa deposit sewa"
         />
         <KpiCard
           icon={Wallet}
           label="Omzet bulan ini"
           value={rupiah(data.monthRevenue)}
-          hint="Bulan berjalan"
+          hint="Tanpa deposit sewa"
         />
         <KpiCard
           icon={ReceiptText}
@@ -238,7 +238,7 @@ function OverviewPage() {
                         {order.code}
                       </Link>
                     </th>
-                    <td>{order.customer ?? 'Walk-in'}</td>
+                    <td>{customerLabel(order.customer, order.customerName)}</td>
                     <td>{ORDER_TYPE_LABEL[order.type] ?? order.type}</td>
                     <td>
                       <OrderStatusBadge status={order.status} />

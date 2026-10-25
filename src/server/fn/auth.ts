@@ -11,6 +11,7 @@ export type SessionUser = {
   id: string
   name: string
   email: string
+  phone: string | null
   image: string | null
   role: 'customer' | 'admin' | 'owner'
   isActive: boolean
@@ -24,6 +25,7 @@ export const getSessionUser = createServerFn({ method: 'GET' }).handler(
       id: string
       name: string
       email: string
+      phone?: string | null
       image?: string | null
       role?: string
       isActive?: boolean
@@ -34,6 +36,7 @@ export const getSessionUser = createServerFn({ method: 'GET' }).handler(
       id: user.id,
       name: user.name,
       email: user.email,
+      phone: user.phone ?? null,
       image: user.image ?? null,
       role: (user.role ?? 'customer') as SessionUser['role'],
       isActive,

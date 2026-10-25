@@ -5,7 +5,7 @@ import { useState } from 'react'
 import { toast } from 'sonner'
 import { Minus, Plus, Search, X } from 'lucide-react'
 import { createPosOrder, posVariantsOptions } from '#/server/fn/admin'
-import { rentalDays } from '#/lib/order-totals'
+import { rentalDays, rentalDeposit } from '#/lib/order-totals'
 import { rupiah } from '#/lib/format'
 import { AdminPage } from '#/components/admin/page'
 import { AdminCard } from '#/components/admin/card'
@@ -28,7 +28,6 @@ type Line = {
   salePrice: number
   discountPercent: number
   rentPricePerDay: number | null
-  rentDeposit: number
   isRentable: boolean
 }
 
@@ -42,7 +41,7 @@ function PosPage() {
   const [search, setSearch] = useState('')
   const [lines, setLines] = useState<Line[]>([])
   const [busy, setBusy] = useState(false)
-  const [doneId, setDoneId] = useState<string | null>(null)
+  const [done, setDone] = useState<{ id: string; code: string } | null>(null)
 
   const { data: variants } = useQuery(posVariantsOptions(search))
   const createFn = useServerFn(createPosOrder)
@@ -58,7 +57,7 @@ function PosPage() {
     mode === 'buy'
       ? lines.reduce((sum, l) => sum + unitBuy(l) * l.qty, 0)
       : lines.reduce((sum, l) => sum + (l.rentPricePerDay ?? 0) * days * l.qty, 0)
-  const deposit = mode === 'rent' ? lines.reduce((sum, l) => sum + l.rentDeposit * l.qty, 0) : 0
+  const deposit = mode === 'rent' ? rentalDeposit(subtotal) : 0
   const grandTotal = subtotal + deposit
 
   const addLine = (v: NonNullable<typeof variants>[number]) => {
@@ -79,7 +78,6 @@ function PosPage() {
           salePrice: v.salePrice,
           discountPercent: v.discountPercent,
           rentPricePerDay: v.rentPricePerDay,
-          rentDeposit: v.rentDeposit,
           isRentable: v.isRentable,
         },
       ]
@@ -111,7 +109,7 @@ function PosPage() {
       await queryClient.invalidateQueries({ queryKey: ['admin', 'products'] })
       setLines([])
       setCustomerName('')
-      setDoneId(res.orderId)
+      setDone({ id: res.orderId, code: res.code })
       toast.success('Transaksi POS tersimpan.')
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Gagal menyimpan transaksi.')
@@ -395,7 +393,7 @@ function PosPage() {
               </div>
               {mode === 'rent' ? (
                 <div className="flex items-center justify-between">
-                  <dt className="text-muted-foreground">Deposit (dikembalikan)</dt>
+                  <dt className="text-muted-foreground">Deposit sewa 50% (dikembalikan)</dt>
                   <dd>{rupiah(deposit)}</dd>
                 </div>
               ) : null}
@@ -414,17 +412,27 @@ function PosPage() {
               {busy ? 'Menyimpan…' : 'Bayar & simpan'}
             </button>
 
-            {doneId ? (
-              <p className="mt-3 text-sm">
-                Tersimpan.{' '}
+            {done ? (
+              <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm">
+                <span>Tersimpan.</span>
+                <Link
+                  to="/struk/$code"
+                  params={{ code: done.code }}
+                  search={{ paper: 'thermal', print: true }}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="link font-medium"
+                >
+                  Cetak struk
+                </Link>
                 <Link
                   to="/admin/transaksi/$id"
-                  params={{ id: doneId }}
+                  params={{ id: done.id }}
                   className="link font-medium"
                 >
                   Lihat transaksi
                 </Link>
-              </p>
+              </div>
             ) : null}
           </AdminCard>
         </div>

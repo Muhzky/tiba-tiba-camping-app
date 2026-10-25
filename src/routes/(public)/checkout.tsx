@@ -31,6 +31,8 @@ import {
 import { Badge } from '#/components/ui/badge'
 import { Skeleton } from '#/components/ui/skeleton'
 import { rupiah } from '#/lib/format'
+import { useSiteSettings } from '#/lib/use-site-settings'
+import { openingHoursWithZone } from '#/lib/site-settings'
 import { cn } from '#/lib/utils'
 
 export const Route = createFileRoute('/(public)/checkout')({
@@ -46,6 +48,7 @@ export const Route = createFileRoute('/(public)/checkout')({
 function CheckoutPage() {
   const queryClient = useQueryClient()
   const navigate = useNavigate()
+  const settings = useSiteSettings()
 
   const [ship, setShip] = useState(true)
   const [addressId, setAddressId] = useState<string | null>(null)
@@ -181,7 +184,8 @@ function CheckoutPage() {
               </div>
             ) : (
               <p className="mt-4 text-sm text-muted-foreground">
-                Toko Tiba Tiba — Jl. Cempaka No. 12, Bandung. Buka 09.00–18.00 WIB.
+                Toko Tiba Tiba — {settings.address}. Buka{' '}
+                {openingHoursWithZone(settings)}.
               </p>
             )}
 
@@ -285,7 +289,7 @@ function CheckoutPage() {
             </div>
             {(data?.depositTotal ?? 0) > 0 ? (
               <div className="flex justify-between">
-                <dt className="text-muted-foreground">Deposit (dikembalikan)</dt>
+                <dt className="text-muted-foreground">Deposit sewa 50% (dikembalikan)</dt>
                 <dd className="font-medium">{rupiah(data?.depositTotal ?? 0)}</dd>
               </div>
             ) : null}

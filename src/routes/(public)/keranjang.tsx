@@ -208,7 +208,7 @@ function KeranjangPage() {
             </div>
             {depositTotal > 0 ? (
               <div className="flex justify-between">
-                <dt className="text-muted-foreground">Deposit (dikembalikan)</dt>
+                <dt className="text-muted-foreground">Deposit sewa 50% (dikembalikan)</dt>
                 <dd className="font-medium">{rupiah(depositTotal)}</dd>
               </div>
             ) : null}

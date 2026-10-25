@@ -173,8 +173,8 @@ Stisla v3 sudah **token-based** (bukan Bootstrap): tema & komponen dikompilasi d
 | Menu | Fitur |
 |---|---|
 | **Overview** | Kartu ringkas (omzet hari ini/bulan, jumlah order, sewa aktif, PO menunggu, stok menipis), grafik penjualan 30 hari, tabel order terbaru, produk terlaris |
-| **Kelola Produk** | CRUD produk & varian, harga jual, harga sewa/hari, deposit, stok, mode PO, upload gambar ke R2, aktif/nonaktif, atur atribut produk, duplikat produk, import CSV (v1.1) |
-| **Transaksi** | Daftar semua transaksi (TanStack Table: filter status/tipe/tanggal, search, export CSV). Detail order + timeline status. Aksi: konfirmasi, proses, kirim (resi), selesai; untuk sewa: serah-terima, pengembalian, cek kondisi, hitung denda, kembalikan deposit. **Order manual/POS kasir** (walk-in): pilih produk, tipe beli/sewa, bayar tunai/QRIS |
+| **Kelola Produk** | CRUD produk & varian, harga jual, harga sewa/hari, stok, mode PO, upload gambar ke R2, aktif/nonaktif, atur atribut produk, duplikat produk, import CSV (v1.1). Deposit sewa tidak diisi per produk — dihitung 50% dari total sewa saat order |
+| **Transaksi** | Daftar semua transaksi (TanStack Table: filter status/tipe/tanggal, search, export CSV). Detail order + timeline status. Aksi: konfirmasi, proses, kirim (resi), selesai; untuk sewa: serah-terima, pengembalian, cek kondisi, hitung denda, kembalikan deposit, **cetak struk A4/thermal**. **Order manual/POS kasir** (walk-in): pilih produk, tipe beli/sewa, bayar tunai/QRIS |
 | **Akun User** | Daftar user, detail, riwayat order, nonaktifkan/aktifkan, reset password, ubah role (super-admin saja) |
 | **Atribut & Kamus** | Atribut produk (nama, tipe, nilai, bobot rekomendasi) dan **kamus** (sinonim/tag/normalisasi istilah, stopword) — lihat 6.4 |
 
@@ -294,7 +294,7 @@ Gunakan `uuid` (UUIDv7 bila tersedia) sebagai PK, `timestamptz` untuk waktu, uan
 
 ### Katalog
 - `categories` (id, parent_id, name, slug)
-- `products` (id, category_id, name, slug unique, description, brand_line, sale_price, discount_percent, rent_price_per_day, rent_deposit, is_sellable, is_rentable, is_preorder, preorder_eta, preorder_dp_percent, is_active, created_at)
+- `products` (id, category_id, name, slug unique, description, brand_line, sale_price, discount_percent, rent_price_per_day, rent_deposit — *usang, tidak dipakai lagi*, is_sellable, is_rentable, is_preorder, preorder_eta, preorder_dp_percent, is_active, created_at)
 - `product_variants` (id, product_id, sku unique, color_name, color_hex, size, stock, sale_price_override)
 - `product_images` (id, product_id, variant_id?, r2_key, sort, alt)
 - `attributes` (id, name, key unique, type, allowed_values jsonb, weight real, is_filterable, show_in_spec)
@@ -311,7 +311,7 @@ Gunakan `uuid` (UUIDv7 bila tersedia) sebagai PK, `timestamptz` untuk waktu, uan
 - `user_profile_vectors` (user_id PK, vector, updated_at)
 
 ### Transaksi
-- `orders` (id, code unique `TTC-YYYYMMDD-XXXX`, user_id?, channel enum[`web`,`pos`], type enum[`buy`,`rent`,`preorder`], status, subtotal, discount, shipping_fee, deposit_total, grand_total, payment_status, midtrans_order_id, paid_at, shipping_address jsonb, notes, created_at)
+- `orders` (id, code unique `TTC-YYYYMMDD-XXXX`, user_id?, channel enum[`web`,`pos`], type enum[`buy`,`rent`,`preorder`], status, subtotal, discount, shipping_fee, deposit_total, grand_total, payment_status, midtrans_order_id, paid_at, returned_at?, late_days, late_fee, damage_fee, deposit_refunded, shipping_address jsonb, notes, created_at)
 - `order_items` (id, order_id, variant_id, rental_unit_id?, name_snapshot, unit_price, qty, rent_start, rent_end, rent_days)
 - `payments` (id, order_id, provider, gross_amount, status, raw_notification jsonb, signature_valid bool, created_at)
 - `rental_returns` (id, order_item_id, returned_at, condition_note, late_days, late_fee, damage_fee, deposit_refund)
@@ -328,13 +328,15 @@ Indeks wajib: `products(slug)`, `products(category_id, is_active)`, `orders(user
 ### 8.1 Status Order
 `pending_payment → paid → processing → shipped/ready_pickup → completed`
 Cabang: `cancelled`, `expired`, `refunded`.
-Sewa menambah: `rented (in_use) → returned → completed` (+ `overdue`).
+Sewa menambah: `rented (in_use) → completed` (aksi pengembalian dicatat lebih dulu; `returned` hanya untuk data lama) + `overdue`.
 PO menambah: `paid (DP/lunas) → awaiting_stock → processing → …`.
 
 ### 8.2 Penyewaan
 - Ketersediaan dihitung dari `rental_units` yang tidak bentrok periode dengan order aktif.
-- Harga = `rent_price_per_day × jumlah_hari` + deposit (refundable).
-- Denda keterlambatan = `late_days × rent_price_per_day × faktor` (konfigurasi).
+- Harga = `rent_price_per_day × jumlah_hari`; deposit = **50% dari total sewa** (refundable, dikembalikan setelah unit diperiksa).
+- Denda keterlambatan = `late_days × harga sewa harian` (bisa disesuaikan admin saat pengembalian).
+- Pengembalian dicatat lewat aksi admin: simpan `returned_at`, denda, `deposit_refunded`, bebaskan unit, lalu status menjadi `completed`.
+- Tenggat sewa = `rent_end` paling akhir; selisih hari memakai tanggal kalender WIB (`Asia/Jakarta`).
 - Reservasi unit dikunci saat order dibuat; dilepas otomatis jika pembayaran kedaluwarsa.
 - Mencegah race condition: gunakan transaksi DB + `SELECT … FOR UPDATE`.
 
@@ -441,8 +443,7 @@ Validasi dengan Zod di `lib/env.ts`; aplikasi gagal start bila ada yang kurang.
 
 ## 15. Asumsi Terbuka (Perlu Konfirmasi Pemilik Produk)
 - Nama merek resmi yang didistribusikan & aset logonya.
-- Kebijakan sewa: durasi min/maks, besaran deposit, formula denda, perpanjangan.
+- Kebijakan sewa: durasi min/maks, formula denda, perpanjangan.
 - Kebijakan PO: DP wajib atau tidak, batas waktu pelunasan.
 - Metode pengiriman & ongkir (flat/zona vs integrasi kurir).
 - Pilihan library auth (default disarankan: Better Auth).
-- Apakah POS kasir walk-in perlu cetak struk/printer thermal di v1.

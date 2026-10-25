@@ -1,4 +1,5 @@
 import { Link } from '@tanstack/react-router'
+import { MapPin } from 'lucide-react'
 import { Logo } from './Logo'
 import {
   FacebookIcon,
@@ -6,6 +7,9 @@ import {
   TiktokIcon,
   YoutubeIcon,
 } from './SocialIcons'
+import { useSiteSettings } from '#/lib/use-site-settings'
+import { openingHoursLine, socialLinks, telHref } from '#/lib/site-settings'
+import type { SocialLink } from '#/lib/site-settings'
 
 const columns = [
   {
@@ -26,14 +30,18 @@ const columns = [
   },
 ]
 
-const socials = [
-  { label: 'Instagram', href: '#kontak', Icon: InstagramIcon },
-  { label: 'YouTube', href: '#kontak', Icon: YoutubeIcon },
-  { label: 'Facebook', href: '#kontak', Icon: FacebookIcon },
-  { label: 'TikTok', href: '#kontak', Icon: TiktokIcon },
-]
+const socialIcons: Record<SocialLink['key'], typeof InstagramIcon> = {
+  instagram: InstagramIcon,
+  youtube: YoutubeIcon,
+  facebook: FacebookIcon,
+  tiktok: TiktokIcon,
+}
 
 export function Footer() {
+  const settings = useSiteSettings()
+  const socials = socialLinks(settings)
+  const hours = openingHoursLine(settings)
+
   return (
     <footer id="kontak" className="border-t border-border bg-background">
       <div className="mx-auto max-w-7xl px-4 py-8 md:px-8">
@@ -41,7 +49,7 @@ export function Footer() {
           <div className="flex flex-col items-start gap-4">
             <Logo />
             <p className="max-w-xs text-sm leading-relaxed text-muted-foreground">
-              “Outdoor gear — rencana boleh dadakan, gear harus matang.”
+              {settings.footerDescription}
             </p>
             <Link
               to="/tentang"
@@ -49,19 +57,26 @@ export function Footer() {
             >
               Tentang kami
             </Link>
-            <div className="flex gap-2">
-              {socials.map(({ label, href, Icon }) => (
-                <a
-                  key={label}
-                  href={href}
-                  aria-label={label}
-                  title={label}
-                  className="grid size-9 place-items-center rounded-full border border-border text-muted-foreground transition hover:border-foreground hover:text-foreground"
-                >
-                  <Icon className="size-4" />
-                </a>
-              ))}
-            </div>
+            {socials.length ? (
+              <div className="flex gap-2">
+                {socials.map(({ key, label, url }) => {
+                  const Icon = socialIcons[key]
+                  return (
+                    <a
+                      key={key}
+                      href={url}
+                      target="_blank"
+                      rel="noreferrer noopener"
+                      aria-label={label}
+                      title={label}
+                      className="grid size-9 place-items-center rounded-full border border-border text-muted-foreground transition hover:border-foreground hover:text-foreground"
+                    >
+                      <Icon className="size-4" />
+                    </a>
+                  )
+                })}
+              </div>
+            ) : null}
           </div>
 
           {columns.map((column) => (
@@ -89,13 +104,42 @@ export function Footer() {
               Kontak
             </h3>
             <ul className="space-y-2.5 text-sm text-muted-foreground">
-              <li>halo@tibatibacamping.test</li>
-              <li>+62 812-0000-0000</li>
-              <li>
-                Senin–Sabtu, 09.00–18.00
-                <br />
-                WIB (Asia/Jakarta)
-              </li>
+              {settings.address ? (
+                <li className="flex items-start gap-2">
+                  <MapPin
+                    className="mt-0.5 size-4 shrink-0"
+                    aria-hidden="true"
+                  />
+                  <span>{settings.address}</span>
+                </li>
+              ) : null}
+              {settings.contactEmail ? (
+                <li>
+                  <a
+                    href={`mailto:${settings.contactEmail}`}
+                    className="underline-offset-4 transition hover:text-foreground hover:underline"
+                  >
+                    {settings.contactEmail}
+                  </a>
+                </li>
+              ) : null}
+              {settings.contactPhone ? (
+                <li>
+                  <a
+                    href={telHref(settings.contactPhone)}
+                    className="underline-offset-4 transition hover:text-foreground hover:underline"
+                  >
+                    {settings.contactPhone}
+                  </a>
+                </li>
+              ) : null}
+              {hours || settings.timezone ? (
+                <li>
+                  {hours}
+                  {hours && settings.timezone ? <br /> : null}
+                  {settings.timezone}
+                </li>
+              ) : null}
             </ul>
           </div>
         </div>

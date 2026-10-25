@@ -1,5 +1,6 @@
 export const queryKeys = {
   me: () => ['me'] as const,
+  siteSettings: () => ['site-settings'] as const,
   products: {
     all: () => ['products'] as const,
     bestSellers: () => ['products', 'best-sellers'] as const,
@@ -22,6 +23,7 @@ export const queryKeys = {
   },
   orders: {
     my: () => ['orders', 'my'] as const,
+    receipt: (code: string) => ['orders', 'receipt', code] as const,
   },
   newsletter: {
     status: () => ['newsletter', 'status'] as const,

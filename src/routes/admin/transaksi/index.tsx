@@ -6,8 +6,9 @@ import { flexRender, stockFeatures, useTable } from '@tanstack/react-table'
 import { toast } from 'sonner'
 import { Download, ReceiptText } from 'lucide-react'
 import { adminOrdersOptions, exportAdminOrders } from '#/server/fn/admin'
-import { formatDateTime, rupiah } from '#/lib/format'
-import { ORDER_STATUS_LABEL, ORDER_TYPE_LABEL } from '#/lib/order-status'
+import { formatDate, formatDateTime, rupiah } from '#/lib/format'
+import { rentalDeadlineInfo } from '#/lib/order-totals'
+import { ORDER_STATUS_LABEL, ORDER_TYPE_LABEL, customerLabel } from '#/lib/order-status'
 import { AdminPage } from '#/components/admin/page'
 import { AdminCard } from '#/components/admin/card'
 import { AdminTable } from '#/components/admin/table'
@@ -95,7 +96,9 @@ function TransaksiListPage() {
       {
         id: 'pelanggan',
         header: 'Pelanggan',
-        cell: ({ row }) => <span>{row.original.customer ?? 'Walk-in'}</span>,
+        cell: ({ row }) => (
+          <span>{customerLabel(row.original.customer, row.original.customerName)}</span>
+        ),
       },
       {
         id: 'tipe',
@@ -112,6 +115,35 @@ function TransaksiListPage() {
         header: 'Status',
         meta: { className: 'whitespace-nowrap' },
         cell: ({ row }) => <OrderStatusBadge status={row.original.status} />,
+      },
+      {
+        id: 'tenggat',
+        header: 'Tenggat sewa',
+        meta: { className: 'hidden whitespace-nowrap md:table-cell' },
+        cell: ({ row }) => {
+          const order = row.original
+          if (order.type !== 'rent' || !order.rentEnd) {
+            return <span className="text-muted-foreground">—</span>
+          }
+          const info = rentalDeadlineInfo([order.rentEnd])
+          const done = ['completed', 'returned', 'cancelled', 'refunded', 'expired'].includes(
+            order.status,
+          )
+          return (
+            <span>
+              {formatDate(order.rentEnd)}
+              {done ? (
+                <span className="admin-cell-meta block">Selesai</span>
+              ) : info.lateDays > 0 ? (
+                <span className="admin-cell-meta block text-destructive">
+                  Terlambat {info.lateDays} hari
+                </span>
+              ) : info.daysLeft === 0 ? (
+                <span className="admin-cell-meta block">Jatuh tempo hari ini</span>
+              ) : null}
+            </span>
+          )
+        },
       },
       {
         id: 'total',

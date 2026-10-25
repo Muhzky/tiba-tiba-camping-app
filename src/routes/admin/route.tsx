@@ -11,6 +11,8 @@ import {
   Menu as MenuIcon,
   Package,
   ReceiptText,
+  Settings,
+  ShoppingCart,
   Tags,
   Users,
 } from 'lucide-react'
@@ -44,6 +46,7 @@ const MENU: MenuGroup[] = [
     items: [
       { to: '/admin/atribut', label: 'Atribut & Kamus', icon: Tags },
       { to: '/admin/rekomendasi', label: 'Rekomendasi', icon: Brain },
+      { to: '/admin/pengaturan', label: 'Pengaturan', icon: Settings },
     ],
   },
 ]
@@ -219,9 +222,13 @@ function AdminLayout() {
             </Link>
 
             <div className="ms-auto flex items-center gap-1">
-              <Link to="/" className={buttonClass({ variant: 'ghost', className: 'hidden sm:inline-flex' })}>
-                <Globe aria-hidden="true" />
-                <span className="hidden md:inline">Lihat situs</span>
+              <Link
+                to="/admin/pos"
+                aria-label="Buat pesanan di POS"
+                className={buttonClass({ variant: 'primary', className: 'inline-flex' })}
+              >
+                <ShoppingCart aria-hidden="true" />
+                <span className="hidden md:inline">Buat Pesanan</span>
               </Link>
 
               <div className="menu" ref={userMenuRef}>

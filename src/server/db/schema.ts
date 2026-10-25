@@ -362,6 +362,7 @@ export const orders = pgTable(
     id: uuid('id').primaryKey().defaultRandom(),
     code: text('code').notNull().unique(),
     userId: uuid('user_id').references(() => users.id, { onDelete: 'set null' }),
+    customerName: text('customer_name'),
     channel: orderChannelEnum('channel').notNull().default('web'),
     type: transactionModeEnum('type').notNull(),
     status: orderStatusEnum('status').notNull().default('pending_payment'),
@@ -374,6 +375,11 @@ export const orders = pgTable(
     midtransOrderId: text('midtrans_order_id'),
     trackingNo: text('tracking_no'),
     paidAt: timestamp('paid_at', { withTimezone: true }),
+    returnedAt: timestamp('returned_at', { withTimezone: true }),
+    lateDays: integer('late_days').notNull().default(0),
+    lateFee: integer('late_fee').notNull().default(0),
+    damageFee: integer('damage_fee').notNull().default(0),
+    depositRefunded: integer('deposit_refunded').notNull().default(0),
     shippingAddress: jsonb('shipping_address'),
     notes: text('notes'),
     createdAt,
@@ -470,4 +476,24 @@ export const auditLogs = pgTable(
 export const newsletterSubscribers = pgTable('newsletter_subscribers', {
   email: text('email').primaryKey(),
   createdAt,
+})
+
+/**
+ * Pengaturan situs — baris tunggal (`id = 1`). Dibaca halaman publik
+ * (footer, navbar, tentang, checkout) dan diubah dari admin.
+ */
+export const siteSettings = pgTable('site_settings', {
+  id: integer('id').primaryKey().default(1),
+  contactEmail: text('contact_email').notNull().default(''),
+  contactPhone: text('contact_phone').notNull().default(''),
+  address: text('address').notNull().default(''),
+  openingDays: text('opening_days').notNull().default(''),
+  openingHours: text('opening_hours').notNull().default(''),
+  timezone: text('timezone').notNull().default(''),
+  footerDescription: text('footer_description').notNull().default(''),
+  instagramUrl: text('instagram_url'),
+  youtubeUrl: text('youtube_url'),
+  facebookUrl: text('facebook_url'),
+  tiktokUrl: text('tiktok_url'),
+  updatedAt,
 })

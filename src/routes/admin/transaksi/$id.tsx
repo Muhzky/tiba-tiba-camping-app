@@ -1,12 +1,18 @@
 import { createFileRoute, Link } from '@tanstack/react-router'
-import { useQueryClient } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useServerFn } from '@tanstack/react-start'
 import { useState } from 'react'
 import { toast } from 'sonner'
-import { ArrowLeft } from 'lucide-react'
-import { adminOrderDetailOptions, returnRental, updateOrderStatus } from '#/server/fn/admin'
-import { formatDateTime, rupiah } from '#/lib/format'
-import { ORDER_STATUS_LABEL, ORDER_TYPE_LABEL } from '#/lib/order-status'
+import { ArrowLeft, Printer } from 'lucide-react'
+import {
+  adminOrderDetailOptions,
+  isReturnableRentalStatus,
+  returnRental,
+  updateOrderStatus,
+} from '#/server/fn/admin'
+import { formatDate, formatDateTime, rupiah } from '#/lib/format'
+import { rentalDeadlineInfo } from '#/lib/order-totals'
+import { ORDER_STATUS_LABEL, ORDER_TYPE_LABEL, customerLabel } from '#/lib/order-status'
 import { AdminPage } from '#/components/admin/page'
 import { AdminCard } from '#/components/admin/card'
 import { AdminTable } from '#/components/admin/table'
@@ -36,7 +42,11 @@ export const Route = createFileRoute('/admin/transaksi/$id')({
 
 function TransaksiDetailPage() {
   const { id } = Route.useParams()
-  const detail = Route.useLoaderData()
+  const initial = Route.useLoaderData()
+  const { data: detail } = useQuery({
+    ...adminOrderDetailOptions(id),
+    initialData: initial,
+  })
   const queryClient = useQueryClient()
   const updateFn = useServerFn(updateOrderStatus)
   const returnFn = useServerFn(returnRental)
@@ -47,13 +57,46 @@ function TransaksiDetailPage() {
   const [trackingNo, setTrackingNo] = useState(order.trackingNo ?? '')
   const [busy, setBusy] = useState(false)
 
+  const deadline = rentalDeadlineInfo(detail.items.map((item) => item.rentEnd))
+  const dailyRate = detail.items.reduce((sum, item) => sum + item.unitPrice * item.qty, 0)
+  const initialLateFee = deadline.lateDays * dailyRate
+  const finished = ['completed', 'returned', 'cancelled', 'refunded', 'expired'].includes(
+    order.status,
+  )
+
   const [ret, setRet] = useState({
-    lateDays: '0',
-    lateFee: '0',
+    lateDays: String(deadline.lateDays),
+    lateFee: String(initialLateFee),
     damageFee: '0',
-    depositRefund: String(order.depositTotal),
+    depositRefund: String(Math.max(0, order.depositTotal - initialLateFee)),
     conditionNote: '',
   })
+
+  const refundFor = (lateFee: string, damageFee: string) =>
+    String(
+      Math.max(
+        0,
+        order.depositTotal - (Number(lateFee) || 0) - (Number(damageFee) || 0),
+      ),
+    )
+
+  const updateLateDays = (value: string) => {
+    const days = Math.max(0, Number(value) || 0)
+    const fee = String(days * dailyRate)
+    setRet((prev) => ({
+      ...prev,
+      lateDays: value,
+      lateFee: fee,
+      depositRefund: refundFor(fee, prev.damageFee),
+    }))
+  }
+
+  const updateFee = (key: 'lateFee' | 'damageFee', value: string) => {
+    setRet((prev) => {
+      const next = { ...prev, [key]: value }
+      return { ...next, depositRefund: refundFor(next.lateFee, next.damageFee) }
+    })
+  }
 
   const invalidate = async () => {
     await queryClient.invalidateQueries({ queryKey: adminOrderDetailOptions(id).queryKey })
@@ -107,7 +150,9 @@ function TransaksiDetailPage() {
   }
 
   const canReturn =
-    order.type === 'rent' && ['rented', 'overdue'].includes(order.status) && detail.returns.length === 0
+    order.type === 'rent' &&
+    isReturnableRentalStatus(order.status) &&
+    detail.returns.length === 0
 
   return (
     <AdminPage
@@ -117,6 +162,14 @@ function TransaksiDetailPage() {
       actions={
         <div className="flex items-center gap-2">
           <OrderStatusBadge status={order.status} />
+          <Link
+            to="/struk/$code"
+            params={{ code: order.code }}
+            className={buttonClass({ variant: 'neutral' })}
+          >
+            <Printer aria-hidden="true" />
+            Struk
+          </Link>
           <Link to="/admin/transaksi" className={buttonClass({ variant: 'ghost' })}>
             <ArrowLeft aria-hidden="true" />
             Kembali
@@ -152,7 +205,7 @@ function TransaksiDetailPage() {
                     {it.rentStart && it.rentEnd ? (
                       <>
                         <div>
-                          {formatDateTime(it.rentStart)} → {formatDateTime(it.rentEnd)}
+                          {formatDate(it.rentStart)} → {formatDate(it.rentEnd)}
                         </div>
                         <div className="admin-cell-meta">{it.rentDays} hari</div>
                       </>
@@ -235,6 +288,21 @@ function TransaksiDetailPage() {
 
           {canReturn ? (
             <AdminCard title="Pengembalian sewa">
+              <div className="mb-3 rounded-xl bg-surface px-3 py-2 text-sm">
+                <p>
+                  Tenggat sewa:{' '}
+                  <strong>{deadline.deadline ? formatDate(deadline.deadline) : '—'}</strong>
+                </p>
+                <p className="text-muted-foreground">
+                  {deadline.lateDays > 0
+                    ? `Terlambat ${deadline.lateDays} hari · tarif ${rupiah(dailyRate)}/hari`
+                    : `Masih dalam masa sewa · tarif denda ${rupiah(dailyRate)}/hari`}
+                </p>
+                <p className="text-muted-foreground">
+                  Deposit diterima {rupiah(order.depositTotal)}. Deposit kembali dihitung otomatis
+                  dari deposit dikurangi denda.
+                </p>
+              </div>
               <div className="grid grid-cols-2 gap-3 md:grid-cols-6">
                 <Field label="Telat (hari)" className="md:col-span-1">
                   <input
@@ -242,7 +310,7 @@ function TransaksiDetailPage() {
                     type="number"
                     min={0}
                     value={ret.lateDays}
-                    onChange={(e) => setRet({ ...ret, lateDays: e.target.value })}
+                    onChange={(e) => updateLateDays(e.target.value)}
                   />
                 </Field>
                 <Field label="Denda telat" className="md:col-span-1">
@@ -251,7 +319,7 @@ function TransaksiDetailPage() {
                     type="number"
                     min={0}
                     value={ret.lateFee}
-                    onChange={(e) => setRet({ ...ret, lateFee: e.target.value })}
+                    onChange={(e) => updateFee('lateFee', e.target.value)}
                   />
                 </Field>
                 <Field label="Denda rusak" className="md:col-span-1">
@@ -260,7 +328,7 @@ function TransaksiDetailPage() {
                     type="number"
                     min={0}
                     value={ret.damageFee}
-                    onChange={(e) => setRet({ ...ret, damageFee: e.target.value })}
+                    onChange={(e) => updateFee('damageFee', e.target.value)}
                   />
                 </Field>
                 <Field label="Deposit kembali" className="md:col-span-1">
@@ -286,8 +354,48 @@ function TransaksiDetailPage() {
                 disabled={busy}
                 onClick={() => void submitReturn()}
               >
-                Catat pengembalian
+                Catat pengembalian &amp; selesaikan
               </button>
+            </AdminCard>
+          ) : null}
+
+          {order.type === 'rent' && order.returnedAt ? (
+            <AdminCard title="Pengembalian">
+              <dl className="flex flex-col gap-2 text-sm">
+                <div className="flex items-center justify-between gap-4">
+                  <dt className="text-muted-foreground">Dikembalikan</dt>
+                  <dd className="text-right">{formatDateTime(order.returnedAt)}</dd>
+                </div>
+                {order.lateDays > 0 ? (
+                  <div className="flex items-center justify-between gap-4">
+                    <dt className="text-muted-foreground">Telat</dt>
+                    <dd className="text-right">{order.lateDays} hari</dd>
+                  </div>
+                ) : null}
+                {order.lateFee > 0 ? (
+                  <div className="flex items-center justify-between gap-4">
+                    <dt className="text-muted-foreground">Denda telat</dt>
+                    <dd className="text-right tabular-nums">{rupiah(order.lateFee)}</dd>
+                  </div>
+                ) : null}
+                {order.damageFee > 0 ? (
+                  <div className="flex items-center justify-between gap-4">
+                    <dt className="text-muted-foreground">Denda kerusakan</dt>
+                    <dd className="text-right tabular-nums">{rupiah(order.damageFee)}</dd>
+                  </div>
+                ) : null}
+                <div className="flex items-center justify-between gap-4 border-t border-border pt-2">
+                  <dt className="font-medium">Deposit kembali</dt>
+                  <dd className="text-right font-semibold tabular-nums">
+                    {rupiah(order.depositRefunded)}
+                  </dd>
+                </div>
+              </dl>
+              {detail.returns[0]?.conditionNote ? (
+                <p className="mt-3 text-sm text-muted-foreground">
+                  Kondisi: {detail.returns[0].conditionNote}
+                </p>
+              ) : null}
             </AdminCard>
           ) : null}
         </div>
@@ -301,6 +409,38 @@ function TransaksiDetailPage() {
                   {ORDER_TYPE_LABEL[order.type]} · {order.channel}
                 </dd>
               </div>
+              {order.type === 'rent' && deadline.deadline ? (
+                <>
+                  <div className="flex items-center justify-between gap-4">
+                    <dt className="text-muted-foreground">Tenggat sewa</dt>
+                    <dd className="text-right font-medium">{formatDate(deadline.deadline)}</dd>
+                  </div>
+                  <div className="flex items-center justify-between gap-4">
+                    <dt className="text-muted-foreground">Status tenggat</dt>
+                    <dd className="text-right">
+                      <StatusBadge
+                        tone={
+                          finished
+                            ? 'neutral'
+                            : deadline.lateDays > 0
+                              ? 'danger'
+                              : deadline.daysLeft === 0
+                                ? 'warning'
+                                : 'info'
+                        }
+                      >
+                        {finished
+                          ? 'Selesai'
+                          : deadline.lateDays > 0
+                            ? `Terlambat ${deadline.lateDays} hari`
+                            : deadline.daysLeft === 0
+                              ? 'Jatuh tempo hari ini'
+                              : `Sisa ${deadline.daysLeft} hari`}
+                      </StatusBadge>
+                    </dd>
+                  </div>
+                </>
+              ) : null}
               <div className="flex items-center justify-between gap-4">
                 <dt className="text-muted-foreground">Subtotal</dt>
                 <dd className="text-right tabular-nums">{rupiah(order.subtotal)}</dd>
@@ -314,18 +454,29 @@ function TransaksiDetailPage() {
                 <dd className="text-right tabular-nums">{rupiah(order.shippingFee)}</dd>
               </div>
               <div className="flex items-center justify-between gap-4">
-                <dt className="text-muted-foreground">Deposit</dt>
+                <dt className="text-muted-foreground">Deposit sewa 50% (dikembalikan)</dt>
                 <dd className="text-right tabular-nums">{rupiah(order.depositTotal)}</dd>
               </div>
               <div className="mt-2 flex items-center justify-between gap-4 border-t border-border pt-3">
                 <dt className="font-semibold">Grand total</dt>
                 <dd className="text-right font-semibold tabular-nums">{rupiah(order.grandTotal)}</dd>
               </div>
+              {order.returnedAt ? (
+                <div className="flex items-center justify-between gap-4">
+                  <dt className="text-muted-foreground">Deposit kembali</dt>
+                  <dd className="text-right tabular-nums">{rupiah(order.depositRefunded)}</dd>
+                </div>
+              ) : null}
             </dl>
             <div className="my-3 border-t border-border" />
             <div className="flex flex-col gap-0.5">
-              <p className="font-medium">{detail.customer ?? 'Walk-in'}</p>
-              <p className="text-sm text-muted-foreground">{detail.customerEmail}</p>
+              <p className="font-medium">
+                {customerLabel(detail.customer, detail.customerName)}
+              </p>
+              <p className="text-sm text-muted-foreground">
+                {detail.customerEmail ??
+                  (detail.order.channel === 'pos' ? 'Pelanggan manual · POS' : 'Tanpa akun')}
+              </p>
             </div>
             {order.shippingAddress ? (
               <p className="mb-1 text-sm text-muted-foreground">

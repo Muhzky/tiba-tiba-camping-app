@@ -4,6 +4,7 @@ import {
   Check,
   Clock,
   Mail,
+  MapPin,
   Phone,
   ShieldCheck,
   Sparkles,
@@ -11,6 +12,8 @@ import {
 } from 'lucide-react'
 import { Button } from '#/components/ui/button'
 import { Reveal } from '#/components/site/Reveal'
+import { useSiteSettings } from '#/lib/use-site-settings'
+import { openingHoursWithZone, telHref } from '#/lib/site-settings'
 
 export const Route = createFileRoute('/(public)/tentang')({
   head: () => ({
@@ -63,6 +66,8 @@ const guarantees = [
 ]
 
 function TentangPage() {
+  const settings = useSiteSettings()
+
   return (
     <div className="pb-24">
       <section className="mx-auto max-w-7xl px-4 pb-16 pt-32 md:px-8 md:pb-20 md:pt-36">
@@ -224,24 +229,36 @@ function TentangPage() {
               paling mahal.
             </p>
             <ul className="mt-6 space-y-2 text-sm text-muted-foreground">
+              {settings.address ? (
+                <li className="flex items-start gap-2">
+                  <MapPin
+                    className="mt-0.5 size-4 shrink-0"
+                    aria-hidden="true"
+                  />
+                  <span>{settings.address}</span>
+                </li>
+              ) : null}
               <li className="flex items-center gap-2">
                 <Mail className="size-4" aria-hidden="true" />
                 <a
-                  href="mailto:halo@tibatibacamping.test"
+                  href={`mailto:${settings.contactEmail}`}
                   className="hover:text-foreground"
                 >
-                  halo@tibatibacamping.test
+                  {settings.contactEmail}
                 </a>
               </li>
               <li className="flex items-center gap-2">
                 <Phone className="size-4" aria-hidden="true" />
-                <a href="tel:+6281200000000" className="hover:text-foreground">
-                  +62 812-0000-0000
+                <a
+                  href={telHref(settings.contactPhone)}
+                  className="hover:text-foreground"
+                >
+                  {settings.contactPhone}
                 </a>
               </li>
               <li className="flex items-center gap-2">
                 <Clock className="size-4" aria-hidden="true" />
-                Senin–Sabtu, 09.00–18.00 WIB
+                {openingHoursWithZone(settings)}
               </li>
             </ul>
           </div>
@@ -254,7 +271,7 @@ function TentangPage() {
               <Link to="/katalog">Mulai Belanja</Link>
             </Button>
             <a
-              href="mailto:halo@tibatibacamping.test"
+              href={`mailto:${settings.contactEmail}`}
               className="inline-flex h-11 w-full items-center justify-center rounded-full border border-foreground/20 px-7 text-base font-medium transition hover:bg-foreground hover:text-background md:w-auto"
             >
               Email kami

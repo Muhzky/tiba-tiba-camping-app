@@ -20,6 +20,7 @@ let categoryId: string
 let productId: string
 let variantId: string
 let orderId: string
+let rentOrderId: string
 
 const GROSS = '100000'
 
@@ -93,6 +94,7 @@ describe('webhook Midtrans', () => {
   })
 
   afterAll(async () => {
+    if (rentOrderId) await db.delete(orders).where(eq(orders.id, rentOrderId))
     if (orderId) await db.delete(orders).where(eq(orders.id, orderId))
     if (variantId) await db.delete(productVariants).where(eq(productVariants.id, variantId))
     if (productId) await db.delete(products).where(eq(products.id, productId))
@@ -158,5 +160,27 @@ describe('webhook Midtrans', () => {
     expect(res.message).toBe('already cancelled')
     const [order] = await db.select().from(orders).where(eq(orders.id, orderId))
     expect(order.status).toBe('cancelled')
+  })
+
+  it('settlement order sewa → status rented, siap dikembalikan', async () => {
+    const code = `TTC-RENT-${Date.now()}`
+    const [order] = await db
+      .insert(orders)
+      .values({
+        code,
+        type: 'rent',
+        status: 'pending_payment',
+        subtotal: 100_000,
+        grandTotal: 100_000,
+      })
+      .returning({ id: orders.id })
+    rentOrderId = order.id
+    await db.insert(payments).values({ orderId: order.id, grossAmount: 100_000 })
+
+    const res = await processMidtransNotification(notify(code, 'settlement'))
+    expect(res).toEqual({ status: 200, message: 'ok' })
+    const [updated] = await db.select().from(orders).where(eq(orders.id, order.id))
+    expect(updated.status).toBe('rented')
+    expect(updated.paidAt).not.toBeNull()
   })
 })

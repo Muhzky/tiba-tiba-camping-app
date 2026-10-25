@@ -10,6 +10,7 @@ import {
   Settings2,
 } from 'lucide-react'
 import { useLogout } from '#/lib/use-logout'
+import { useSiteSettings } from '#/lib/use-site-settings'
 import { meOptions } from '#/server/fn/auth'
 import { Button } from '#/components/ui/button'
 
@@ -32,6 +33,7 @@ export const Route = createFileRoute('/(public)/akun')({
 })
 
 function AkunLayout() {
+  const settings = useSiteSettings()
   const { user: contextUser } = Route.useRouteContext()
   const { data: me } = useQuery(meOptions)
   // `undefined` = query belum selesai, pakai user dari loader. `null` = sudah
@@ -115,11 +117,11 @@ function AkunLayout() {
                   dan pengiriman.
                 </p>
                 <a
-                  href="mailto:halo@tibatibacamping.test"
+                  href={`mailto:${settings.contactEmail}`}
                   className="mt-3 inline-flex items-center gap-1.5 text-[11px] font-medium underline-offset-4 hover:underline"
                 >
                   <Mail className="size-3" aria-hidden="true" />
-                  halo@tibatibacamping.test
+                  {settings.contactEmail}
                 </a>
               </div>
             </div>

@@ -130,7 +130,7 @@ describe('ketersediaan sewa', () => {
     expect(result?.freeUnits).toBe(2)
     expect(result?.days).toBe(2)
     expect(result?.rentTotal).toBe(75_000 * 2)
-    expect(result?.deposit).toBe(100_000)
+    expect(result?.deposit).toBe(75_000)
   })
 
   it('unit yang dibooking tidak dihitung bebas pada periode yang tumpang tindih', async () => {

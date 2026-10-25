@@ -85,7 +85,12 @@ export async function processMidtransNotification(
         nextOrderStatus = 'cancelled'
         nextPayment = 'failed'
       } else {
-        nextOrderStatus = order.type === 'preorder' ? 'awaiting_stock' : 'processing'
+        nextOrderStatus =
+          order.type === 'preorder'
+            ? 'awaiting_stock'
+            : order.type === 'rent'
+              ? 'rented'
+              : 'processing'
         nextPayment = 'paid'
       }
     } else if (status === 'deny' || status === 'cancel') {
