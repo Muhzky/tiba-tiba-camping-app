@@ -28,7 +28,7 @@ export const Route = createFileRoute('/struk/$code')({
   loader: ({ context, params }) =>
     context.queryClient.ensureQueryData(receiptOptions(params.code)),
   head: ({ loaderData }) => ({
-    links: [{ rel: 'stylesheet', href: appCss }],
+    links: [{ rel: 'stylesheet', href: appCss, 'data-layout-style': 'public' }],
     meta: [
       {
         title: loaderData

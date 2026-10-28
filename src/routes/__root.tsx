@@ -2,6 +2,7 @@ import { HeadContent, Scripts, createRootRouteWithContext } from '@tanstack/reac
 import type { RouterContext } from '../router'
 import { TanStackRouterDevtoolsPanel } from '@tanstack/react-router-devtools'
 import { TanStackDevtools } from '@tanstack/react-devtools'
+import { LayoutStylesheetGuard } from '#/lib/use-layout-stylesheet'
 
 export const Route = createRootRouteWithContext<RouterContext>()({
   head: () => ({
@@ -35,6 +36,7 @@ function RootDocument({ children }: { children: React.ReactNode }) {
         <HeadContent />
       </head>
       <body>
+        <LayoutStylesheetGuard />
         {children}
         {import.meta.env.DEV ? (
           <TanStackDevtools

@@ -9,7 +9,7 @@ import { siteSettingsOptions } from '#/server/fn/settings'
 
 export const Route = createFileRoute('/(public)')({
   head: () => ({
-    links: [{ rel: 'stylesheet', href: appCss }],
+    links: [{ rel: 'stylesheet', href: appCss, 'data-layout-style': 'public' }],
   }),
   loader: async ({ context }) => {
     await Promise.all([

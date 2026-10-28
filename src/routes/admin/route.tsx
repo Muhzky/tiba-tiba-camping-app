@@ -54,7 +54,7 @@ const MENU: MenuGroup[] = [
 export const Route = createFileRoute('/admin')({
   head: () => ({
     meta: [{ title: 'Admin — Tiba Tiba Camping' }],
-    links: [{ rel: 'stylesheet', href: adminCss }],
+    links: [{ rel: 'stylesheet', href: adminCss, 'data-layout-style': 'admin' }],
   }),
   loader: async ({ context }) => {
     const user = await context.queryClient.ensureQueryData(meOptions)
