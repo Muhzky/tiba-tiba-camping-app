@@ -6,6 +6,7 @@ import { toast } from 'sonner'
 import { Receipt } from 'lucide-react'
 import { myOrdersOptions } from '#/server/fn/order'
 import { repayOrder } from '#/server/fn/checkout'
+import { syncOrderPayment } from '#/server/fn/midtrans'
 import { paySnap } from '#/lib/snap'
 import { Button } from '#/components/ui/button'
 import {
@@ -41,9 +42,18 @@ function PesananPage() {
   const { data, isLoading } = useQuery(myOrdersOptions)
   const queryClient = useQueryClient()
   const repay = useServerFn(repayOrder)
+  const syncPayment = useServerFn(syncOrderPayment)
   const repayMutation = useMutation({
     mutationFn: (orderId: string) => repay({ data: orderId }),
-    onSuccess: async (result) => {
+    onSuccess: async (result, orderId) => {
+      if (result.paid) {
+        // Pembayaran ternyata sudah settle tetapi webhook belum sampai.
+        toast.success('Pembayaran sudah diterima! Status pesanan diperbarui.')
+        await queryClient.invalidateQueries({
+          queryKey: myOrdersOptions.queryKey,
+        })
+        return
+      }
       if (!result.snapToken) {
         toast.error('Gagal menyiapkan pembayaran.', {
           description: result.snapError ?? undefined,
@@ -51,8 +61,19 @@ function PesananPage() {
         return
       }
       try {
-        await paySnap(result.snapToken)
-        toast.success('Pembayaran diterima! Pesananmu sedang diproses.')
+        const outcome = await paySnap(result.snapToken)
+        // Tarik status langsung dari Midtrans supaya tombol "Bayar Sekarang"
+        // tidak muncul lagi saat webhook telat/terlewat.
+        await syncPayment({ data: orderId }).catch(() => null)
+        if (outcome === 'success') {
+          toast.success('Pembayaran diterima! Pesananmu sedang diproses.')
+        } else if (outcome === 'pending') {
+          toast.info('Pembayaran sedang diproses.', {
+            description: 'Status akan diperbarui otomatis setelah pembayaran dikonfirmasi.',
+          })
+        } else {
+          toast.info('Pembayaran ditutup — lanjutkan lewat tombol bayar ulang.')
+        }
       } catch {
         toast.info('Pembayaran ditutup — lanjutkan lewat tombol bayar ulang.')
       }
@@ -126,6 +147,8 @@ function PesananPage() {
           {filtered.map((order) => {
             const tone = orderStatusTone(order.status)
             const deadline = rentalDeadlineInfo([order.rentEnd])
+            const canRepay =
+              order.status === 'pending_payment' && order.paymentStatus !== 'paid'
             const deadlineDone = [
               'completed',
               'returned',
@@ -193,7 +216,7 @@ function PesananPage() {
                   <span className="text-sm font-semibold tabular-nums">
                     {rupiah(order.grandTotal)}
                   </span>
-                  {order.status === 'pending_payment' ? (
+                  {canRepay ? (
                     <Button
                       size="sm"
                       className="rounded-full"

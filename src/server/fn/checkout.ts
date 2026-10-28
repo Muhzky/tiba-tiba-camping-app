@@ -18,6 +18,8 @@ import { queryKeys } from '#/lib/query-keys'
 import { preorderDpAmount } from '#/lib/order-totals'
 import { requireUser } from '#/server/fn/order'
 import { ACTIVE_RENTAL_STATUSES } from '#/server/fn/rental'
+import { syncMidtransPayment } from '#/server/fn/midtrans'
+import type { Tx } from '#/server/fn/inventory'
 import {
   buildCartView,
   readCart,
@@ -176,7 +178,7 @@ export const checkoutPreviewOptions = (input: CheckoutInput) =>
 // ── Midtrans Snap ────────────────────────────────────────────────────────────
 
 async function createSnap(args: {
-  code: string
+  orderId: string
   grossAmount: number
   customer: { name: string; email: string; phone?: string | null }
   itemLabel: string
@@ -195,12 +197,12 @@ async function createSnap(args: {
       },
       body: JSON.stringify({
         transaction_details: {
-          order_id: args.code,
+          order_id: args.orderId,
           gross_amount: args.grossAmount,
         },
         item_details: [
           {
-            id: args.code,
+            id: args.orderId,
             price: args.grossAmount,
             quantity: 1,
             name: args.itemLabel.slice(0, 50),
@@ -234,18 +236,6 @@ export function orderCode() {
 }
 
 // ── Reservasi unit sewa ──────────────────────────────────────────────────────
-
-type Tx = Parameters<Parameters<typeof db.transaction>[0]>[0]
-
-export async function restockBuyOrder(tx: Tx, orderId: string) {
-  const items = await tx.select().from(orderItems).where(eq(orderItems.orderId, orderId))
-  for (const item of items) {
-    await tx
-      .update(productVariants)
-      .set({ stock: sql`stock + ${item.qty}` })
-      .where(eq(productVariants.id, item.variantId))
-  }
-}
 
 export async function pickRentUnits(
   tx: Tx,
@@ -395,6 +385,7 @@ export const createOrder = createServerFn({ method: 'POST' })
             shippingFee: group.shippingFee,
             depositTotal: group.deposit,
             grandTotal: group.grandTotal,
+            midtransOrderId: code,
             shippingAddress: shipSnapshot,
             notes:
               group.type === 'preorder'
@@ -468,7 +459,7 @@ export const createOrder = createServerFn({ method: 'POST' })
     for (const order of created) {
       try {
         const snap = await createSnap({
-          code: order.code,
+          orderId: order.code,
           grossAmount: order.grandTotal,
           customer: { name: user.name, email: user.email },
           itemLabel:
@@ -493,9 +484,27 @@ export const createOrder = createServerFn({ method: 'POST' })
 
 // ── Bayar ulang (Snap token baru) ────────────────────────────────────────────
 
+/**
+ * Midtrans menolak `order_id` yang sudah pernah dipakai ("transaction_details.order_id
+ * sudah digunakan"). Setiap percobaan bayar ulang memakai id unik turunan kode order,
+ * sehingga percobaan sebelumnya yang masih pending tidak menghalangi pembayaran baru.
+ */
+export function retryMidtransOrderId(code: string) {
+  const suffix = `${Date.now().toString(36)}${crypto.randomBytes(2).toString('hex')}`.toUpperCase()
+  return `${code}-R${suffix}`
+}
+
+export type RepayResult = {
+  snapToken: string | null
+  snapError: string | null
+  /** true bila ternyata pembayaran sudah settle (webhook telat / belum terkirim). */
+  paid: boolean
+  orderStatus: string
+}
+
 export const repayOrder = createServerFn({ method: 'POST' })
   .validator((orderId: string) => orderId)
-  .handler(async ({ data }): Promise<{ snapToken: string | null; snapError: string | null }> => {
+  .handler(async ({ data }): Promise<RepayResult> => {
     const user = await requireUser()
     const [order] = await db
       .select()
@@ -505,9 +514,25 @@ export const repayOrder = createServerFn({ method: 'POST' })
     if (!order) throw new Error('ORDER_TIDAK_DITEMUKAN')
     if (order.status !== 'pending_payment') throw new Error('ORDER_BUKAN_PENDING')
 
+    // Cek status transaksi terakhir ke Midtrans lebih dulu. Bila pembayaran sudah
+    // masuk tetapi webhook belum sampai, jangan buat transaksi baru — perbarui order.
+    const synced = await syncMidtransPayment(order, { onlyPaid: true })
+    if (synced.paymentStatus === 'paid') {
+      return {
+        snapToken: null,
+        snapError: null,
+        paid: true,
+        orderStatus: synced.orderStatus,
+      }
+    }
+    if (synced.orderStatus !== 'pending_payment') {
+      throw new Error('ORDER_BUKAN_PENDING')
+    }
+
+    const orderId = retryMidtransOrderId(order.code)
     try {
       const snap = await createSnap({
-        code: order.code,
+        orderId,
         grossAmount: order.grandTotal,
         customer: {
           name: user.name,
@@ -521,11 +546,17 @@ export const repayOrder = createServerFn({ method: 'POST' })
               ? `Sewa ${order.code}`
               : `Pesanan ${order.code}`,
       })
-      return { snapToken: snap.token, snapError: null }
+      await db
+        .update(orders)
+        .set({ midtransOrderId: orderId })
+        .where(eq(orders.id, order.id))
+      return { snapToken: snap.token, snapError: null, paid: false, orderStatus: order.status }
     } catch (error) {
       return {
         snapToken: null,
         snapError: error instanceof Error ? error.message : 'Gagal membuat transaksi',
+        paid: false,
+        orderStatus: order.status,
       }
     }
   })

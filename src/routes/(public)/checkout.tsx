@@ -15,6 +15,7 @@ import {
   checkoutPreviewOptions,
   createOrder,
 } from '#/server/fn/checkout'
+import { syncOrderPayment } from '#/server/fn/midtrans'
 import { addressesOptions } from '#/server/fn/account'
 import { myOrdersOptions } from '#/server/fn/order'
 import { paySnap } from '#/lib/snap'
@@ -68,6 +69,7 @@ function CheckoutPage() {
   }, [addresses, addressId])
 
   const create = useServerFn(createOrder)
+  const syncPayment = useServerFn(syncOrderPayment)
   const mutation = useMutation({
     mutationFn: () => create({ data: { ship, addressId: ship ? addressId : null, notes: notes || undefined } }),
     onSuccess: async (result) => {
@@ -78,16 +80,32 @@ function CheckoutPage() {
       const tokens = result.orders.flatMap((o) => (o.snapToken ? [o.snapToken] : []))
 
       if (tokens.length > 0) {
-        try {
-          for (const token of tokens) {
-            await paySnap(token)
+        const outcomes: Array<'success' | 'pending' | 'closed' | 'error'> = []
+        for (const token of tokens) {
+          try {
+            outcomes.push(await paySnap(token))
+          } catch {
+            outcomes.push('error')
           }
+        }
+        // Webhook bisa telat; tarik status langsung dari Midtrans.
+        await Promise.allSettled(
+          result.orders.map((order) => syncPayment({ data: order.id })),
+        )
+        if (outcomes.includes('success')) {
           toast.success('Pembayaran diterima! Pesananmu sedang diproses.')
-        } catch {
+        }
+        if (outcomes.includes('pending')) {
+          toast.info('Pembayaran sedang diproses.', {
+            description: 'Status akan diperbarui otomatis setelah dikonfirmasi.',
+          })
+        }
+        if (outcomes.includes('closed') || outcomes.includes('error')) {
           toast.info('Selesaikan pembayaran lewat tautan di riwayat pesanan.', {
             description: 'Snap tertutup atau pembayaran gagal — pesanan tetap tersimpan.',
           })
         }
+        await queryClient.invalidateQueries({ queryKey: myOrdersOptions.queryKey })
       } else {
         toast.error('Pembayaran belum dapat disiapkan.', {
           description: firstError?.snapError ?? 'Coba bayar ulang dari riwayat pesanan.',
