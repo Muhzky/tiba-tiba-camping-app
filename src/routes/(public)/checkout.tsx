@@ -34,6 +34,9 @@ import { Skeleton } from '#/components/ui/skeleton'
 import { rupiah } from '#/lib/format'
 import { useSiteSettings } from '#/lib/use-site-settings'
 import { openingHoursWithZone } from '#/lib/site-settings'
+import { AdminModeNotice } from '#/components/site/AdminModeNotice'
+import { useAdminMode } from '#/components/site/AdminModeProvider'
+import { isAdminModeError } from '#/lib/roles'
 import { cn } from '#/lib/utils'
 
 export const Route = createFileRoute('/(public)/checkout')({
@@ -50,6 +53,7 @@ function CheckoutPage() {
   const queryClient = useQueryClient()
   const navigate = useNavigate()
   const settings = useSiteSettings()
+  const { isStaff, showAdminDialog } = useAdminMode()
 
   const [ship, setShip] = useState(true)
   const [addressId, setAddressId] = useState<string | null>(null)
@@ -59,7 +63,7 @@ function CheckoutPage() {
   const previewInput = useMemo(() => ({ ship, addressId }), [ship, addressId])
   const preview = useQuery({
     ...checkoutPreviewOptions(previewInput),
-    enabled: !ship || addressId !== null,
+    enabled: !isStaff && (!ship || addressId !== null),
   })
 
   useEffect(() => {
@@ -115,6 +119,10 @@ function CheckoutPage() {
     },
     onError: (error) => {
       const msg = String(error.message)
+      if (isAdminModeError(error)) {
+        showAdminDialog()
+        return
+      }
       if (msg.includes('STOK_KURANG')) {
         toast.error('Stok berubah saat checkout.', { description: 'Periksa lagi keranjangmu.' })
       } else if (msg.includes('KERANJANG_KOSONG')) {
@@ -126,6 +134,15 @@ function CheckoutPage() {
       }
     },
   })
+
+  if (isStaff) {
+    return (
+      <AdminModeNotice
+        title="Checkout dinonaktifkan untuk admin"
+        description="Kamu sedang memakai situs sebagai admin. Pesanan pelanggan tidak bisa dibuat dari akun admin — gunakan POS untuk membuat pesanan."
+      />
+    )
+  }
 
   const data = preview.data
   const empty =

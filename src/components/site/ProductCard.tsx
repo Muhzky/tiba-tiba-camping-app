@@ -5,18 +5,27 @@ import { ShoppingBag } from 'lucide-react'
 import { toast } from 'sonner'
 import { cn } from 'cn'
 import { cartOptions, quickAddToCart } from '#/server/fn/cart'
+import { useAdminMode } from '#/components/site/AdminModeProvider'
+import { isAdminModeError } from '#/lib/roles'
 import type { ProductCardData } from '#/server/fn/product'
 
 export function ProductCard({ product, className }: { product: ProductCardData; className?: string }) {
   const queryClient = useQueryClient()
   const quickAdd = useServerFn(quickAddToCart)
+  const { guard, showAdminDialog } = useAdminMode()
   const mutation = useMutation({
     mutationFn: () => quickAdd({ data: product.id }),
     onSuccess: (cart) => {
       queryClient.setQueryData(cartOptions.queryKey, cart)
       toast.success(`${product.name} masuk keranjang.`)
     },
-    onError: () => toast.error('Gagal menambahkan ke keranjang.'),
+    onError: (error) => {
+      if (isAdminModeError(error)) {
+        showAdminDialog()
+        return
+      }
+      toast.error('Gagal menambahkan ke keranjang.')
+    },
   })
 
   return (
@@ -62,7 +71,7 @@ export function ProductCard({ product, className }: { product: ProductCardData; 
             aria-label={`Tambah ${product.name} ke keranjang`}
             tabIndex={-1}
             disabled={mutation.isPending}
-            onClick={() => mutation.mutate()}
+            onClick={() => guard(() => mutation.mutate())}
             className="relative z-20 grid size-10 shrink-0 place-items-center rounded-full bg-primary text-primary-foreground transition-transform duration-300 group-hover:scale-110 active:scale-95"
           >
             <ShoppingBag className="size-4.5" />

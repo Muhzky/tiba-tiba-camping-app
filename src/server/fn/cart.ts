@@ -12,6 +12,7 @@ import { rentalDeposit } from '#/lib/order-totals'
 import { getSessionUser } from '#/server/fn/auth'
 import { recordProductEvent } from '#/server/recommender/profile'
 import { readCookie, writeCookie } from '#/server/fn/cookies'
+import { assertNotStaff } from '#/server/fn/guard'
 
 const COOKIE_MAX_AGE = 60 * 60 * 24 * 30
 
@@ -199,6 +200,7 @@ const addInput = z
 export const addToCart = createServerFn({ method: 'POST' })
   .validator(addInput)
   .handler(async ({ data }): Promise<CartView> => {
+    await assertNotStaff()
     const [variant] = await db
       .select({ id: productVariants.id, productId: productVariants.productId })
       .from(productVariants)
@@ -233,6 +235,7 @@ export const addToCart = createServerFn({ method: 'POST' })
 export const quickAddToCart = createServerFn({ method: 'POST' })
   .validator((productId: string) => productId)
   .handler(async ({ data }): Promise<CartView> => {
+    await assertNotStaff()
     const [variant] = await db
       .select({ id: productVariants.id, stock: productVariants.stock })
       .from(productVariants)

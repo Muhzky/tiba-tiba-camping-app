@@ -22,7 +22,7 @@ import type { LucideIcon } from 'lucide-react'
 import { useLogout } from '#/lib/use-logout'
 import { useSiteSettings } from '#/lib/use-site-settings'
 import { openingHoursWithZone, telHref } from '#/lib/site-settings'
-import { meOptions } from '#/server/fn/auth'
+import { useIsStaff } from '#/lib/use-is-staff'
 import { cartOptions } from '#/server/fn/cart'
 import { Button } from '#/components/ui/button'
 import {
@@ -160,12 +160,12 @@ function AccountMenuItem({
 export function Navbar() {
   const [open, setOpen] = useState(false)
   const [isDesktop, setIsDesktop] = useState(false)
-  const { data: user } = useQuery(meOptions)
+  const { user, isStaff } = useIsStaff()
   const userInitial = user?.name.trim().slice(0, 1).toUpperCase() || '?'
   // Staff (admin/owner) mendapat pintasan balik ke panel admin dari situs publik.
-  const isStaff = user?.role === 'admin' || user?.role === 'owner'
   const roleLabel = user?.role === 'owner' ? 'Owner' : 'Admin'
-  const { data: cart } = useQuery(cartOptions)
+  // Keranjang pelanggan tidak relevan untuk staff — jangan fetch.
+  const { data: cart } = useQuery({ ...cartOptions, enabled: !isStaff })
   const settings = useSiteSettings()
   const logoutMutation = useLogout()
 
@@ -234,22 +234,24 @@ export function Navbar() {
               <Search />
             </Link>
           </Button>
-          <Button
-            variant="outline"
-            size="icon"
-            aria-label="Keranjang"
-            className="relative rounded-full"
-            asChild
-          >
-            <Link to="/keranjang">
-              <ShoppingBag />
-              {cart && cart.count > 0 ? (
-                <span className="absolute -right-0.5 -top-0.5 grid size-4 place-items-center rounded-full bg-sale text-[10px] font-bold text-white">
-                  {cart.count}
-                </span>
-              ) : null}
-            </Link>
-          </Button>
+          {!isStaff ? (
+            <Button
+              variant="outline"
+              size="icon"
+              aria-label="Keranjang"
+              className="relative rounded-full"
+              asChild
+            >
+              <Link to="/keranjang">
+                <ShoppingBag />
+                {cart && cart.count > 0 ? (
+                  <span className="absolute -right-0.5 -top-0.5 grid size-4 place-items-center rounded-full bg-sale text-[10px] font-bold text-white">
+                    {cart.count}
+                  </span>
+                ) : null}
+              </Link>
+            </Button>
+          ) : null}
           {user ? (
             // Non-modal: menu profil tidak perlu mengunci scroll halaman.
             // Mode modal memasang overflow:hidden pada <body>; scrollbar hilang

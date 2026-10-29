@@ -31,6 +31,8 @@ import { Calendar } from '#/components/ui/calendar'
 import { Popover, PopoverContent, PopoverTrigger } from '#/components/ui/popover'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '#/components/ui/tabs'
 import { ProductCard } from '#/components/site/ProductCard'
+import { useAdminMode } from '#/components/site/AdminModeProvider'
+import { isAdminModeError } from '#/lib/roles'
 import { cn } from 'cn'
 
 const actionButtonClass = 'h-11 w-full rounded-full px-5 text-sm font-semibold sm:text-base'
@@ -374,6 +376,7 @@ function TransactionPanel({
   const navigate = useNavigate()
   const queryClient = useQueryClient()
   const add = useServerFn(addToCart)
+  const { guard, showAdminDialog } = useAdminMode()
   const initialMode: 'beli' | 'sewa' | 'preorder' =
     modes.includes('beli') && stock > 0
       ? 'beli'
@@ -394,7 +397,13 @@ function TransactionPanel({
         action: { label: 'Lihat keranjang', onClick: () => void navigate({ to: '/keranjang' }) },
       })
     },
-    onError: () => toast.error('Gagal menambahkan ke keranjang.'),
+    onError: (error) => {
+      if (isAdminModeError(error)) {
+        showAdminDialog()
+        return
+      }
+      toast.error('Gagal menambahkan ke keranjang.')
+    },
     onSettled: () => setPendingAction(null),
   })
 
@@ -490,10 +499,12 @@ function TransactionPanel({
             <Button
               className={actionButtonClass}
               disabled={buyDisabled}
-              onClick={() => {
-                setPendingAction('cart')
-                addMutation.mutate({ mode: 'buy', qty: safeQty })
-              }}
+              onClick={() =>
+                guard(() => {
+                  setPendingAction('cart')
+                  addMutation.mutate({ mode: 'buy', qty: safeQty })
+                })
+              }
             >
               {pendingAction === 'cart' ? 'Menambahkan…' : 'Masukkan Keranjang'}
             </Button>
@@ -501,13 +512,15 @@ function TransactionPanel({
               variant="outline"
               className={actionButtonClass}
               disabled={buyDisabled}
-              onClick={() => {
-                setPendingAction('checkout')
-                addMutation.mutate(
-                  { mode: 'buy', qty: safeQty },
-                  { onSuccess: () => void navigate({ to: '/checkout' }) },
-                )
-              }}
+              onClick={() =>
+                guard(() => {
+                  setPendingAction('checkout')
+                  addMutation.mutate(
+                    { mode: 'buy', qty: safeQty },
+                    { onSuccess: () => void navigate({ to: '/checkout' }) },
+                  )
+                })
+              }
             >
               {pendingAction === 'checkout' ? 'Membuka checkout…' : 'Beli Sekarang'}
             </Button>
@@ -550,10 +563,12 @@ function TransactionPanel({
             <Button
               className={actionButtonClass}
               disabled={!variantId || addMutation.isPending}
-              onClick={() => {
-                setPendingAction('preorder')
-                addMutation.mutate({ mode: 'preorder', qty: 1 })
-              }}
+              onClick={() =>
+                guard(() => {
+                  setPendingAction('preorder')
+                  addMutation.mutate({ mode: 'preorder', qty: 1 })
+                })
+              }
             >
               {pendingAction === 'preorder' ? 'Memproses…' : 'Amankan Pre-Order'}
             </Button>
@@ -569,6 +584,7 @@ function RentalPanel({ product, variantId }: { product: ProductDetail; variantId
   const navigate = useNavigate()
   const queryClient = useQueryClient()
   const add = useServerFn(addToCart)
+  const { guard, showAdminDialog } = useAdminMode()
   const addRentMutation = useMutation({
     mutationFn: () =>
       add({
@@ -589,7 +605,13 @@ function RentalPanel({ product, variantId }: { product: ProductDetail; variantId
         },
       })
     },
-    onError: () => toast.error('Gagal menambahkan sewa ke keranjang.'),
+    onError: (error) => {
+      if (isAdminModeError(error)) {
+        showAdminDialog()
+        return
+      }
+      toast.error('Gagal menambahkan sewa ke keranjang.')
+    },
   })
 
   const ready = Boolean(range?.from && range.to)
@@ -680,7 +702,7 @@ function RentalPanel({ product, variantId }: { product: ProductDetail; variantId
           <Button
             className={actionButtonClass}
             disabled={!data.available || !variantId || addRentMutation.isPending}
-            onClick={() => addRentMutation.mutate()}
+            onClick={() => guard(() => addRentMutation.mutate())}
           >
             {addRentMutation.isPending
               ? 'Menambahkan…'

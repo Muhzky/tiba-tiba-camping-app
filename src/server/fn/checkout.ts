@@ -17,6 +17,7 @@ import { env } from '#/lib/env'
 import { queryKeys } from '#/lib/query-keys'
 import { preorderDpAmount } from '#/lib/order-totals'
 import { requireUser } from '#/server/fn/order'
+import { requireCustomer } from '#/server/fn/guard'
 import { ACTIVE_RENTAL_STATUSES } from '#/server/fn/rental'
 import { syncMidtransPayment } from '#/server/fn/midtrans'
 import type { Tx } from '#/server/fn/inventory'
@@ -297,7 +298,7 @@ type OrderGroup = {
 export const createOrder = createServerFn({ method: 'POST' })
   .validator(checkoutInput)
   .handler(async ({ data }): Promise<{ orders: CreatedOrder[]; cartCount: number }> => {
-    const user = await requireUser()
+    const user = await requireCustomer()
     const allLines = await readCart()
     if (allLines.length === 0) throw new Error('KERANJANG_KOSONG')
 

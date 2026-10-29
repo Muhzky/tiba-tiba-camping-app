@@ -5,12 +5,15 @@ import { toast } from 'sonner'
 import { Minus, Plus, ShoppingBag, Trash2, Truck } from 'lucide-react'
 import {
   cartOptions,
+  clearCart,
   removeCartItem,
   updateCartQty,
 } from '#/server/fn/cart'
 import { Button } from '#/components/ui/button'
 import { Badge } from '#/components/ui/badge'
 import { Skeleton } from '#/components/ui/skeleton'
+import { AdminModeNotice } from '#/components/site/AdminModeNotice'
+import { useAdminMode } from '#/components/site/AdminModeProvider'
 import { cn } from '#/lib/utils'
 import { rupiah } from '#/lib/format'
 
@@ -23,9 +26,11 @@ const modeLabel: Record<string, string> = { buy: 'Beli', rent: 'Sewa', preorder:
 function KeranjangPage() {
   const queryClient = useQueryClient()
   const navigate = useNavigate()
-  const { data, isLoading } = useQuery(cartOptions)
+  const { isStaff } = useAdminMode()
+  const { data, isLoading } = useQuery({ ...cartOptions, enabled: !isStaff })
   const update = useServerFn(updateCartQty)
   const remove = useServerFn(removeCartItem)
+  const clear = useServerFn(clearCart)
 
   const updateMutation = useMutation({
     mutationFn: (input: { variantId: string; mode: 'buy' | 'rent' | 'preorder'; qty: number }) =>
@@ -39,6 +44,22 @@ function KeranjangPage() {
     onSuccess: (cart) => queryClient.setQueryData(cartOptions.queryKey, cart),
     onError: () => toast.error('Gagal menghapus item.'),
   })
+  const clearMutation = useMutation({
+    mutationFn: () => clear(),
+    onSuccess: (cart) => queryClient.setQueryData(cartOptions.queryKey, cart),
+    onError: () => toast.error('Gagal mengosongkan keranjang.'),
+  })
+
+  if (isStaff) {
+    return (
+      <AdminModeNotice
+        title="Keranjang dinonaktifkan untuk admin"
+        description="Kamu sedang memakai situs sebagai admin. Keranjang dan checkout pelanggan tidak tersedia — buat pesanan lewat POS."
+        onClearCart={() => clearMutation.mutate()}
+        clearing={clearMutation.isPending}
+      />
+    )
+  }
 
   if (isLoading) {
     return (
