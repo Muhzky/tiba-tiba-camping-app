@@ -1,9 +1,15 @@
 import { createFileRoute, Outlet } from '@tanstack/react-router'
+import { useEffect } from 'react'
 import appCss from '../../styles.css?url'
 import { Navbar } from '#/components/site/Navbar'
 import { AdminModeProvider } from '#/components/site/AdminModeProvider'
 import { Footer } from '#/components/site/Footer'
 import { Toaster } from '#/components/ui/sonner'
+import { useIsStaff } from '#/lib/use-is-staff'
+import {
+  useLayoutStylesheet,
+  warmLayoutStylesheet,
+} from '#/lib/use-layout-stylesheet'
 import { meOptions } from '#/server/fn/auth'
 import { cartOptions } from '#/server/fn/cart'
 import { siteSettingsOptions } from '#/server/fn/settings'
@@ -27,6 +33,15 @@ export const Route = createFileRoute('/(public)')({
 })
 
 function PublicLayout() {
+  const { isStaff } = useIsStaff()
+  useLayoutStylesheet('public')
+
+  // Staff bisa melompat ke panel admin dari menu akun; panaskan CSS admin
+  // (media "not all", jadi tidak berlaku) supaya peralihannya tanpa jeda.
+  useEffect(() => {
+    if (isStaff) void warmLayoutStylesheet('admin')
+  }, [isStaff])
+
   return (
     <AdminModeProvider>
       <div className="flex min-h-svh flex-col bg-background">

@@ -7,8 +7,13 @@ import { receiptOptions } from '#/server/fn/receipt'
 import type { ReceiptData } from '#/server/fn/receipt'
 import { formatDate, formatDateTime, rupiah } from '#/lib/format'
 import { rentalDays, rentalDeadlineInfo } from '#/lib/order-totals'
-import { ORDER_STATUS_LABEL, ORDER_TYPE_LABEL, customerLabel } from '#/lib/order-status'
+import {
+  ORDER_STATUS_LABEL,
+  ORDER_TYPE_LABEL,
+  customerLabel,
+} from '#/lib/order-status'
 import { cn } from '#/lib/utils'
+import { useLayoutStylesheet } from '#/lib/use-layout-stylesheet'
 import appCss from '../../styles.css?url'
 
 const receiptSearchSchema = z.object({
@@ -43,7 +48,9 @@ export const Route = createFileRoute('/struk/$code')({
 
 function itemTotal(item: ReceiptData['items'][number]): number {
   if (item.rentStart && item.rentEnd) {
-    const days = item.rentDays ?? rentalDays(new Date(item.rentStart), new Date(item.rentEnd))
+    const days =
+      item.rentDays ??
+      rentalDays(new Date(item.rentStart), new Date(item.rentEnd))
     return item.unitPrice * days * item.qty
   }
   return item.unitPrice * item.qty
@@ -62,13 +69,15 @@ function ReceiptPage() {
   const { user } = Route.useRouteContext()
   const search = Route.useSearch()
   const [paper, setPaper] = useState<'a4' | 'thermal'>(search.paper ?? 'a4')
+  useLayoutStylesheet('public')
 
   const { order, items, payments, settings, cashier } = data
   const isRent = order.type === 'rent'
   const isAdmin = user.role === 'admin' || user.role === 'owner'
   const paid = order.paymentStatus === 'paid'
   const deadline = rentalDeadlineInfo(items.map((item) => item.rentEnd))
-  const latestPayment = payments.find((payment) => payment.status === 'paid') ?? payments.at(-1)
+  const latestPayment =
+    payments.find((payment) => payment.status === 'paid') ?? payments.at(-1)
 
   useEffect(() => {
     if (!search.print) return
@@ -136,8 +145,12 @@ function ReceiptPage() {
           )}
         >
           <header className="text-center">
-            <p className="text-base font-bold tracking-[0.18em] uppercase">Tiba Tiba Camping</p>
-            {settings.address ? <p className="mt-1">{settings.address}</p> : null}
+            <p className="text-base font-bold tracking-[0.18em] uppercase">
+              Tiba Tiba Camping
+            </p>
+            {settings.address ? (
+              <p className="mt-1">{settings.address}</p>
+            ) : null}
             <p>
               {settings.contactPhone}
               {settings.contactEmail ? ` · ${settings.contactEmail}` : ''}
@@ -156,7 +169,9 @@ function ReceiptPage() {
             <span className="text-black/60">No. struk</span>
             <span className="text-right font-mono">{order.code}</span>
             <span className="text-black/60">Tanggal</span>
-            <span className="text-right">{formatDateTime(order.paidAt ?? order.createdAt)}</span>
+            <span className="text-right">
+              {formatDateTime(order.paidAt ?? order.createdAt)}
+            </span>
             {order.channel === 'pos' ? (
               <>
                 <span className="text-black/60">Kasir</span>
@@ -172,11 +187,15 @@ function ReceiptPage() {
               {ORDER_TYPE_LABEL[order.type] ?? order.type} · {order.channel}
             </span>
             <span className="text-black/60">Status</span>
-            <span className="text-right">{ORDER_STATUS_LABEL[order.status] ?? order.status}</span>
+            <span className="text-right">
+              {ORDER_STATUS_LABEL[order.status] ?? order.status}
+            </span>
             {isRent && deadline.deadline ? (
               <>
                 <span className="text-black/60">Tenggat sewa</span>
-                <span className="text-right font-medium">{formatDate(deadline.deadline)}</span>
+                <span className="text-right font-medium">
+                  {formatDate(deadline.deadline)}
+                </span>
               </>
             ) : null}
           </div>
@@ -199,31 +218,46 @@ function ReceiptPage() {
                 const days =
                   item.rentStart && item.rentEnd
                     ? (item.rentDays ??
-                      rentalDays(new Date(item.rentStart), new Date(item.rentEnd)))
+                      rentalDays(
+                        new Date(item.rentStart),
+                        new Date(item.rentEnd),
+                      ))
                     : null
                 return (
-                  <tr key={item.id} className="border-b border-black/10 align-top">
+                  <tr
+                    key={item.id}
+                    className="border-b border-black/10 align-top"
+                  >
                     <td className="py-1.5 pr-2">
                       <div className="font-medium">{item.name}</div>
                       {item.serial ? (
-                        <div className="text-[10px] text-black/60">Serial {item.serial}</div>
+                        <div className="text-[10px] text-black/60">
+                          Serial {item.serial}
+                        </div>
                       ) : null}
                       {item.rentStart && item.rentEnd ? (
                         <div className="text-[10px] text-black/60">
-                          {formatDate(item.rentStart)} – {formatDate(item.rentEnd)} · {days} hari
+                          {formatDate(item.rentStart)} –{' '}
+                          {formatDate(item.rentEnd)} · {days} hari
                         </div>
                       ) : null}
                     </td>
-                    <td className="py-1.5 text-right tabular-nums">{item.qty}</td>
+                    <td className="py-1.5 text-right tabular-nums">
+                      {item.qty}
+                    </td>
                     {paper === 'a4' ? (
                       <td className="py-1.5 text-right tabular-nums">
                         {rupiah(item.unitPrice)}
                         {item.rentStart ? (
-                          <span className="text-[10px] text-black/60">/hari</span>
+                          <span className="text-[10px] text-black/60">
+                            /hari
+                          </span>
                         ) : null}
                       </td>
                     ) : null}
-                    <td className="py-1.5 text-right tabular-nums">{rupiah(itemTotal(item))}</td>
+                    <td className="py-1.5 text-right tabular-nums">
+                      {rupiah(itemTotal(item))}
+                    </td>
                   </tr>
                 )
               })}
@@ -250,30 +284,48 @@ function ReceiptPage() {
               label="Metode bayar"
               value={paymentMethodLabel(latestPayment?.provider)}
             />
-            <ReceiptRow label="Pembayaran" value={paid ? 'Lunas' : 'Belum dibayar'} />
+            <ReceiptRow
+              label="Pembayaran"
+              value={paid ? 'Lunas' : 'Belum dibayar'}
+            />
           </div>
 
           {isRent && order.returnedAt ? (
             <div className="mt-4 border-t border-dashed border-black/40 pt-3">
               <p className="font-semibold">Pengembalian sewa</p>
               <div className="mt-1 flex flex-col gap-1">
-                <ReceiptRow label="Dikembalikan" value={formatDateTime(order.returnedAt)} />
+                <ReceiptRow
+                  label="Dikembalikan"
+                  value={formatDateTime(order.returnedAt)}
+                />
                 {order.lateDays > 0 ? (
                   <ReceiptRow label="Telat" value={`${order.lateDays} hari`} />
                 ) : null}
                 {order.lateFee > 0 ? (
-                  <ReceiptRow label="Denda telat" value={rupiah(order.lateFee)} />
+                  <ReceiptRow
+                    label="Denda telat"
+                    value={rupiah(order.lateFee)}
+                  />
                 ) : null}
                 {order.damageFee > 0 ? (
-                  <ReceiptRow label="Denda kerusakan" value={rupiah(order.damageFee)} />
+                  <ReceiptRow
+                    label="Denda kerusakan"
+                    value={rupiah(order.damageFee)}
+                  />
                 ) : null}
-                <ReceiptRow label="Deposit kembali" value={rupiah(order.depositRefunded)} bold />
+                <ReceiptRow
+                  label="Deposit kembali"
+                  value={rupiah(order.depositRefunded)}
+                  bold
+                />
               </div>
             </div>
           ) : null}
 
           {order.notes && order.channel === 'web' ? (
-            <p className="mt-4 text-[10px] text-black/60">Catatan: {order.notes}</p>
+            <p className="mt-4 text-[10px] text-black/60">
+              Catatan: {order.notes}
+            </p>
           ) : null}
 
           <div className="my-3 border-t border-dashed border-black/40" />
@@ -281,11 +333,14 @@ function ReceiptPage() {
           <footer className="text-center text-[10px] text-black/70">
             {isRent ? (
               <p>
-                Deposit sewa 50% dikembalikan setelah unit kembali dan diperiksa. Denda
-                keterlambatan atau kerusakan dipotong dari deposit.
+                Deposit sewa 50% dikembalikan setelah unit kembali dan
+                diperiksa. Denda keterlambatan atau kerusakan dipotong dari
+                deposit.
               </p>
             ) : null}
-            <p className="mt-1 font-medium">Terima kasih sudah camping bersama kami.</p>
+            <p className="mt-1 font-medium">
+              Terima kasih sudah camping bersama kami.
+            </p>
           </footer>
         </section>
       </div>
@@ -303,7 +358,12 @@ function ReceiptRow({
   bold?: boolean
 }) {
   return (
-    <div className={cn('flex items-start justify-between gap-3', bold && 'font-semibold')}>
+    <div
+      className={cn(
+        'flex items-start justify-between gap-3',
+        bold && 'font-semibold',
+      )}
+    >
       <span className="text-black/60">{label}</span>
       <span className="text-right tabular-nums">{value}</span>
     </div>
@@ -321,7 +381,10 @@ function ReceiptError() {
         <Link to="/akun/pesanan" className="underline-offset-4 hover:underline">
           Riwayat pesanan
         </Link>
-        <Link to="/admin/transaksi" className="underline-offset-4 hover:underline">
+        <Link
+          to="/admin/transaksi"
+          className="underline-offset-4 hover:underline"
+        >
           Daftar transaksi
         </Link>
       </div>

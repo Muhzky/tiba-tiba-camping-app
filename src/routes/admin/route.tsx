@@ -1,4 +1,10 @@
-import { createFileRoute, Link, Outlet, redirect, useRouterState } from '@tanstack/react-router'
+import {
+  createFileRoute,
+  Link,
+  Outlet,
+  redirect,
+  useRouterState,
+} from '@tanstack/react-router'
 import { useEffect, useRef, useState } from 'react'
 import type { CSSProperties } from 'react'
 import {
@@ -20,6 +26,10 @@ import type { LucideIcon } from 'lucide-react'
 import { Toaster } from 'sonner'
 import adminCss from '../../styles/admin.css?url'
 import { useLogout } from '#/lib/use-logout'
+import {
+  useLayoutStylesheet,
+  warmLayoutStylesheet,
+} from '#/lib/use-layout-stylesheet'
 import { meOptions } from '#/server/fn/auth'
 import { buttonClass } from '#/components/admin/button'
 import { StatusBadge } from '#/components/admin/badge'
@@ -54,11 +64,17 @@ const MENU: MenuGroup[] = [
 export const Route = createFileRoute('/admin')({
   head: () => ({
     meta: [{ title: 'Admin — Tiba Tiba Camping' }],
-    links: [{ rel: 'stylesheet', href: adminCss, 'data-layout-style': 'admin' }],
+    links: [
+      { rel: 'stylesheet', href: adminCss, 'data-layout-style': 'admin' },
+    ],
   }),
   loader: async ({ context }) => {
     const user = await context.queryClient.ensureQueryData(meOptions)
-    if (!user) throw redirect({ to: '/masuk' })
+    if (!user) {
+      // Bawa tujuan kembali supaya halaman login bisa mem-preload CSS admin
+      // dan mengarahkan user ke panel setelah berhasil masuk.
+      throw redirect({ to: '/masuk', search: { redirect: '/admin' } })
+    }
     if (user.role === 'customer') throw redirect({ to: '/akun' })
     return user
   },
@@ -69,7 +85,8 @@ function initialsOf(name: string): string {
   const parts = name.trim().split(/\s+/).filter(Boolean)
   if (parts.length === 0) return '?'
   const first = parts[0]?.charAt(0) ?? ''
-  const second = parts.length > 1 ? (parts[parts.length - 1]?.charAt(0) ?? '') : ''
+  const second =
+    parts.length > 1 ? (parts[parts.length - 1]?.charAt(0) ?? '') : ''
   return (first + second).toUpperCase()
 }
 
@@ -77,6 +94,7 @@ function AdminLayout() {
   const user = Route.useLoaderData()
   const pathname = useRouterState({ select: (s) => s.location.pathname })
   const signOutMutation = useLogout()
+  useLayoutStylesheet('admin')
 
   const [sidebarVisible, setSidebarVisible] = useState(false)
   const [userMenuOpen, setUserMenuOpen] = useState(false)
@@ -89,6 +107,12 @@ function AdminLayout() {
     onScroll()
     window.addEventListener('scroll', onScroll, { passive: true })
     return () => window.removeEventListener('scroll', onScroll)
+  }, [])
+
+  // Panaskan stylesheet publik selagi panel terbuka supaya "Keluar" atau
+  // "Lihat situs" tidak menunggu unduhan CSS (dulu: ±1 detik tanpa gaya).
+  useEffect(() => {
+    void warmLayoutStylesheet('public')
   }, [])
 
   // Tutup drawer mobile saat pindah halaman.
@@ -105,7 +129,11 @@ function AdminLayout() {
       setUserMenuOpen(false)
     }
     const onPointerDown = (event: PointerEvent) => {
-      if (userMenuOpen && userMenuRef.current && !userMenuRef.current.contains(event.target as Node)) {
+      if (
+        userMenuOpen &&
+        userMenuRef.current &&
+        !userMenuRef.current.contains(event.target as Node)
+      ) {
         setUserMenuOpen(false)
       }
     }
@@ -132,7 +160,8 @@ function AdminLayout() {
       <div
         className={cn('admin-shell', sidebarVisible && 'is-sidebar-visible')}
         onClick={(event) => {
-          if (event.target === event.currentTarget && sidebarVisible) setSidebarVisible(false)
+          if (event.target === event.currentTarget && sidebarVisible)
+            setSidebarVisible(false)
         }}
       >
         <aside id="admin-sidebar" className="sidebar sidebar--lg admin-sidebar">
@@ -154,7 +183,9 @@ function AdminLayout() {
                   <span className="sidebar__group-title">{group.title}</span>
                   <ul className="sidebar__list">
                     {group.items.map((item) => {
-                      const active = item.exact ? pathname === item.to : pathname.startsWith(item.to)
+                      const active = item.exact
+                        ? pathname === item.to
+                        : pathname.startsWith(item.to)
                       const Icon = item.icon
                       return (
                         <li key={item.to} className="sidebar__item">
@@ -192,12 +223,17 @@ function AdminLayout() {
                   onClick={() => signOutMutation.mutate()}
                 >
                   <LogOut aria-hidden="true" />
-                  <span>{signOutMutation.isPending ? 'Keluar…' : 'Keluar'}</span>
+                  <span>
+                    {signOutMutation.isPending ? 'Keluar…' : 'Keluar'}
+                  </span>
                 </button>
               </li>
             </ul>
             <div className="copyright py-3">
-              <p className="text-xs" style={{ color: 'var(--sidebar-group-title-color)' }}>
+              <p
+                className="text-xs"
+                style={{ color: 'var(--sidebar-group-title-color)' }}
+              >
                 © 2026 Tiba Tiba Camping
               </p>
             </div>
@@ -205,10 +241,17 @@ function AdminLayout() {
         </aside>
 
         <div className="admin-main">
-          <header className="navbar" data-scrolled={scrolled ? 'true' : undefined}>
+          <header
+            className="navbar"
+            data-scrolled={scrolled ? 'true' : undefined}
+          >
             <button
               type="button"
-              className={buttonClass({ variant: 'ghost', iconOnly: true, className: 'lg:hidden' })}
+              className={buttonClass({
+                variant: 'ghost',
+                iconOnly: true,
+                className: 'lg:hidden',
+              })}
               aria-label="Buka menu sidebar"
               aria-controls="admin-sidebar"
               aria-expanded={sidebarVisible}
@@ -225,7 +268,10 @@ function AdminLayout() {
               <Link
                 to="/admin/pos"
                 aria-label="Buat pesanan di POS"
-                className={buttonClass({ variant: 'primary', className: 'inline-flex' })}
+                className={buttonClass({
+                  variant: 'primary',
+                  className: 'inline-flex',
+                })}
               >
                 <ShoppingCart aria-hidden="true" />
                 <span className="hidden md:inline">Buat Pesanan</span>
@@ -234,14 +280,21 @@ function AdminLayout() {
               <div className="menu" ref={userMenuRef}>
                 <button
                   type="button"
-                  className={buttonClass({ variant: 'ghost', className: 'flex items-center gap-2' })}
+                  className={buttonClass({
+                    variant: 'ghost',
+                    className: 'flex items-center gap-2',
+                  })}
                   aria-haspopup="menu"
                   aria-expanded={userMenuOpen}
                   onClick={() => setUserMenuOpen((open) => !open)}
                 >
-                  <span className="hidden font-medium sm:inline">{user.name}</span>
+                  <span className="hidden font-medium sm:inline">
+                    {user.name}
+                  </span>
                   <span className="avatar avatar--sm avatar--circle">
-                    <span className="avatar__fallback">{initialsOf(user.name)}</span>
+                    <span className="avatar__fallback">
+                      {initialsOf(user.name)}
+                    </span>
                   </span>
                   <ChevronDown aria-hidden="true" />
                 </button>
@@ -252,15 +305,25 @@ function AdminLayout() {
                 >
                   <div className="menu__group" role="none">
                     <h3 className="menu__group-label">{user.name}</h3>
-                    <p className="px-3 pb-1 text-xs text-muted-foreground">{user.email}</p>
+                    <p className="px-3 pb-1 text-xs text-muted-foreground">
+                      {user.email}
+                    </p>
                     <div className="px-3 pb-1">
-                      <StatusBadge tone={user.role === 'owner' ? 'primary' : 'neutral'} soft={false}>
+                      <StatusBadge
+                        tone={user.role === 'owner' ? 'primary' : 'neutral'}
+                        soft={false}
+                      >
                         {user.role}
                       </StatusBadge>
                     </div>
                   </div>
                   <hr className="menu__separator" role="separator" />
-                  <Link to="/" className="menu__item" role="menuitem" onClick={() => setUserMenuOpen(false)}>
+                  <Link
+                    to="/"
+                    className="menu__item"
+                    role="menuitem"
+                    onClick={() => setUserMenuOpen(false)}
+                  >
                     <Globe aria-hidden="true" />
                     Lihat situs
                   </Link>
@@ -283,7 +346,8 @@ function AdminLayout() {
           <main
             className="admin-content"
             onClick={(event) => {
-              if (event.target === event.currentTarget && sidebarVisible) setSidebarVisible(false)
+              if (event.target === event.currentTarget && sidebarVisible)
+                setSidebarVisible(false)
             }}
           >
             <Outlet />

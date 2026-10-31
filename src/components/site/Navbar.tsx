@@ -23,6 +23,7 @@ import { useLogout } from '#/lib/use-logout'
 import { useSiteSettings } from '#/lib/use-site-settings'
 import { openingHoursWithZone, telHref } from '#/lib/site-settings'
 import { useIsStaff } from '#/lib/use-is-staff'
+import { warmLayoutStylesheet } from '#/lib/use-layout-stylesheet'
 import { cartOptions } from '#/server/fn/cart'
 import { Button } from '#/components/ui/button'
 import {
@@ -136,17 +137,19 @@ function AccountMenuItem({
   to,
   icon: Icon,
   label,
+  onIntent,
 }: {
   to: AccountLink
   icon: LucideIcon
   label: string
+  onIntent?: () => void
 }) {
   return (
     <DropdownMenuItem
       asChild
       className="gap-2.5 rounded-lg px-2 py-1.5 text-[13px] focus:bg-primary focus:text-primary-foreground"
     >
-      <Link to={to}>
+      <Link to={to} onPointerEnter={onIntent} onFocus={onIntent}>
         <Icon
           className="size-4 text-muted-foreground group-focus/dropdown-menu-item:text-primary-foreground"
           aria-hidden="true"
@@ -316,6 +319,7 @@ export function Navbar() {
                     to="/admin"
                     icon={LayoutDashboard}
                     label="Dashboard admin"
+                    onIntent={() => void warmLayoutStylesheet('admin')}
                   />
                 ) : (
                   <>
