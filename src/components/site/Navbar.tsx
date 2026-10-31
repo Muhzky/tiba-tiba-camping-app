@@ -230,7 +230,7 @@ export function Navbar() {
             variant="outline"
             size="icon"
             aria-label="Cari produk"
-            className="rounded-full"
+            className="rounded-full border-transparent"
             asChild
           >
             <Link to="/katalog">
@@ -242,7 +242,7 @@ export function Navbar() {
               variant="outline"
               size="icon"
               aria-label="Keranjang"
-              className="relative rounded-full"
+              className="relative rounded-full border-transparent"
               asChild
             >
               <Link to="/keranjang">
@@ -265,7 +265,7 @@ export function Navbar() {
                   variant="outline"
                   size="icon"
                   aria-label={`Akun ${user.name}`}
-                  className="overflow-hidden rounded-full p-0 font-semibold"
+                  className="overflow-hidden rounded-full border-transparent p-0 font-semibold"
                 >
                   {user.image ? (
                     <img
@@ -365,7 +365,7 @@ export function Navbar() {
               variant="outline"
               size="icon"
               aria-label="Masuk"
-              className="rounded-full"
+              className="rounded-full border-transparent"
               asChild
             >
               <Link to="/masuk">
