@@ -109,50 +109,91 @@ export const getAdminOverview = createServerFn({ method: 'GET' }).handler(
     const dayStart = startOfDay(now)
     const monthStart = startOfMonth(now)
 
-    const [todayRow] = await db
-      .select({ v: sum(sql`${orders.grandTotal} - ${orders.depositTotal}`) })
-      .from(orders)
-      .where(and(eq(orders.paymentStatus, 'paid'), gte(orders.paidAt, dayStart)))
-    const [monthRow] = await db
-      .select({ v: sum(sql`${orders.grandTotal} - ${orders.depositTotal}`) })
-      .from(orders)
-      .where(and(eq(orders.paymentStatus, 'paid'), gte(orders.paidAt, monthStart)))
-
-    const [monthOrdersRow] = await db
-      .select({ n: count() })
-      .from(orders)
-      .where(gte(orders.createdAt, monthStart))
-
-    const [rentRow] = await db
-      .select({ n: count() })
-      .from(orders)
-      .where(
-        and(
-          eq(orders.type, 'rent'),
-          inArray(orders.status, [...ACTIVE_RENTAL_STATUSES]),
+    // Semua KPI saling lepas: jalankan berbarengan supaya ringkasan dashboard
+    // tidak menunggu delapan round trip database secara berurutan.
+    const [
+      [todayRow],
+      [monthRow],
+      [monthOrdersRow],
+      [rentRow],
+      [poRow],
+      [lowStockRow],
+      paidSince,
+      latest,
+      topProducts,
+    ] = await Promise.all([
+      db
+        .select({ v: sum(sql`${orders.grandTotal} - ${orders.depositTotal}`) })
+        .from(orders)
+        .where(and(eq(orders.paymentStatus, 'paid'), gte(orders.paidAt, dayStart))),
+      db
+        .select({ v: sum(sql`${orders.grandTotal} - ${orders.depositTotal}`) })
+        .from(orders)
+        .where(and(eq(orders.paymentStatus, 'paid'), gte(orders.paidAt, monthStart))),
+      db
+        .select({ n: count() })
+        .from(orders)
+        .where(gte(orders.createdAt, monthStart)),
+      db
+        .select({ n: count() })
+        .from(orders)
+        .where(
+          and(
+            eq(orders.type, 'rent'),
+            inArray(orders.status, [...ACTIVE_RENTAL_STATUSES]),
+          ),
         ),
-      )
-
-    const [poRow] = await db
-      .select({ n: count() })
-      .from(orders)
-      .where(and(eq(orders.type, 'preorder'), inArray(orders.status, ['awaiting_stock', 'pending_payment'])))
-
-    const [lowStockRow] = await db
-      .select({ n: count() })
-      .from(productVariants)
-      .innerJoin(products, eq(products.id, productVariants.productId))
-      .where(and(eq(products.isActive, true), sql`${productVariants.stock} <= 3`))
-
-    const paidSince = await db
-      .select({
-        date: sql<string>`to_char(date_trunc('day', ${orders.paidAt}), 'YYYY-MM-DD')`,
-        total: sum(sql`${orders.grandTotal} - ${orders.depositTotal}`),
-      })
-      .from(orders)
-      .where(and(eq(orders.paymentStatus, 'paid'), gte(orders.paidAt, new Date(now.getTime() - 30 * 86_400_000))))
-      .groupBy(sql`date_trunc('day', ${orders.paidAt})`)
-      .orderBy(sql`date_trunc('day', ${orders.paidAt})`)
+      db
+        .select({ n: count() })
+        .from(orders)
+        .where(and(eq(orders.type, 'preorder'), inArray(orders.status, ['awaiting_stock', 'pending_payment']))),
+      db
+        .select({ n: count() })
+        .from(productVariants)
+        .innerJoin(products, eq(products.id, productVariants.productId))
+        .where(and(eq(products.isActive, true), sql`${productVariants.stock} <= 3`)),
+      db
+        .select({
+          date: sql<string>`to_char(date_trunc('day', ${orders.paidAt}), 'YYYY-MM-DD')`,
+          total: sum(sql`${orders.grandTotal} - ${orders.depositTotal}`),
+        })
+        .from(orders)
+        .where(and(eq(orders.paymentStatus, 'paid'), gte(orders.paidAt, new Date(now.getTime() - 30 * 86_400_000))))
+        .groupBy(sql`date_trunc('day', ${orders.paidAt})`)
+        .orderBy(sql`date_trunc('day', ${orders.paidAt})`),
+      db
+        .select({
+          id: orders.id,
+          code: orders.code,
+          customer: users.name,
+          customerName: orders.customerName,
+          type: orders.type,
+          status: orders.status,
+          grandTotal: orders.grandTotal,
+          createdAt: orders.createdAt,
+        })
+        .from(orders)
+        .leftJoin(users, eq(orders.userId, users.id))
+        .orderBy(desc(orders.createdAt))
+        .limit(8),
+      db
+        .select({
+          name: orderItems.nameSnapshot,
+          qty: sum(orderItems.qty),
+          revenue: sum(sql`${orderItems.unitPrice} * ${orderItems.qty}`),
+        })
+        .from(orderItems)
+        .innerJoin(orders, eq(orderItems.orderId, orders.id))
+        .where(
+          and(
+            inArray(orders.status, ['paid', 'processing', 'shipped', 'completed', 'rented', 'returned']),
+            gte(orders.createdAt, new Date(now.getTime() - 30 * 86_400_000)),
+          ),
+        )
+        .groupBy(orderItems.nameSnapshot)
+        .orderBy(desc(sql`sum(${orderItems.qty})`))
+        .limit(5),
+    ])
 
     const sales30d: Array<{ date: string; total: number }> = []
     const byDate = new Map(paidSince.map((r) => [r.date, Number(r.total ?? 0)]))
@@ -160,40 +201,6 @@ export const getAdminOverview = createServerFn({ method: 'GET' }).handler(
       const d = ymd(new Date(now.getTime() - i * 86_400_000))
       sales30d.push({ date: d, total: byDate.get(d) ?? 0 })
     }
-
-    const latest = await db
-      .select({
-        id: orders.id,
-        code: orders.code,
-        customer: users.name,
-        customerName: orders.customerName,
-        type: orders.type,
-        status: orders.status,
-        grandTotal: orders.grandTotal,
-        createdAt: orders.createdAt,
-      })
-      .from(orders)
-      .leftJoin(users, eq(orders.userId, users.id))
-      .orderBy(desc(orders.createdAt))
-      .limit(8)
-
-    const topProducts = await db
-      .select({
-        name: orderItems.nameSnapshot,
-        qty: sum(orderItems.qty),
-        revenue: sum(sql`${orderItems.unitPrice} * ${orderItems.qty}`),
-      })
-      .from(orderItems)
-      .innerJoin(orders, eq(orderItems.orderId, orders.id))
-      .where(
-        and(
-          inArray(orders.status, ['paid', 'processing', 'shipped', 'completed', 'rented', 'returned']),
-          gte(orders.createdAt, new Date(now.getTime() - 30 * 86_400_000)),
-        ),
-      )
-      .groupBy(orderItems.nameSnapshot)
-      .orderBy(desc(sql`sum(${orderItems.qty})`))
-      .limit(5)
 
     return {
       todayRevenue: Number(todayRow?.v ?? 0),
@@ -216,6 +223,9 @@ export const getAdminOverview = createServerFn({ method: 'GET' }).handler(
 export const adminOverviewOptions = queryOptions({
   queryKey: queryKeys.admin.overview(),
   queryFn: () => getAdminOverview(),
+  // Ringkasan ini ikut di-prefetch saat login; jangan langsung dianggap basi
+  // sehingga data yang sudah dimuat dipakai apa adanya, bukan direfetch lagi.
+  staleTime: 30_000,
 })
 
 // ── Pengguna ─────────────────────────────────────────────────────────────────

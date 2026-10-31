@@ -26,6 +26,11 @@ export const Route = createFileRoute('/admin/')({
     await context.queryClient.ensureQueryData(adminOverviewOptions)
   },
   component: OverviewPage,
+  // Kerangka dashboard tampil seketika saat pindah dari halaman login; data KPI
+  // menyusul tanpa menahan seluruh halaman (dulu UI kosong ±1 detik).
+  pendingComponent: OverviewSkeleton,
+  pendingMs: 0,
+  pendingMinMs: 0,
 })
 
 function KpiCard({
@@ -330,6 +335,84 @@ function OverviewPage() {
                 ))}
               </ol>
             )}
+          </AdminCard>
+        </div>
+      </div>
+    </AdminPage>
+  )
+}
+
+/**
+ * Kerangka overview selama query berjalan. Struktur & tinggi kartu dibuat mirip
+ * konten asli supaya peralihan ke data tidak menggeser layout.
+ */
+function OverviewSkeleton() {
+  return (
+    <AdminPage
+      title="Overview"
+      description="Ringkasan operasional Tiba Tiba Camping hari ini."
+    >
+      <p className="sr-only" role="status">
+        Memuat ringkasan…
+      </p>
+
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4" aria-hidden="true">
+        {Array.from({ length: 4 }).map((_, index) => (
+          <div key={index} className="card admin-kpi-card">
+            <div className="card__body">
+              <div className="flex items-center gap-2">
+                <span className="size-8 animate-pulse rounded-full bg-border" />
+                <span className="h-3 w-24 animate-pulse rounded bg-border" />
+              </div>
+              <div>
+                <div className="h-7 w-28 animate-pulse rounded bg-border" />
+                <div className="mt-2 h-3 w-20 animate-pulse rounded bg-border" />
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <div
+        className="grid grid-cols-1 items-start gap-3 xl:grid-cols-12"
+        aria-hidden="true"
+      >
+        <div className="grid grid-cols-1 gap-3 xl:col-span-8">
+          <AdminCard title="Penjualan 30 hari">
+            <div className="admin-chart">
+              <div className="size-full min-h-[220px] animate-pulse rounded bg-border/60" />
+            </div>
+          </AdminCard>
+
+          <AdminCard title="Order terbaru">
+            <div className="flex flex-col gap-3 py-1">
+              {Array.from({ length: 4 }).map((_, index) => (
+                <div
+                  key={index}
+                  className="h-10 animate-pulse rounded bg-border/60"
+                />
+              ))}
+            </div>
+          </AdminCard>
+        </div>
+
+        <div className="grid grid-cols-1 gap-3 xl:col-span-4">
+          <AdminCard title="Perlu perhatian" bodyClassName="py-1">
+            <div className="flex flex-col gap-3 py-2">
+              <div className="h-5 animate-pulse rounded bg-border/60" />
+              <div className="h-5 animate-pulse rounded bg-border/60" />
+            </div>
+          </AdminCard>
+
+          <AdminCard title="Produk terlaris" bodyClassName="py-1">
+            <div className="flex flex-col gap-3 py-2">
+              {Array.from({ length: 3 }).map((_, index) => (
+                <div
+                  key={index}
+                  className="h-6 animate-pulse rounded bg-border/60"
+                />
+              ))}
+            </div>
           </AdminCard>
         </div>
       </div>
