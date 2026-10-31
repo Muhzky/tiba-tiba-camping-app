@@ -25,12 +25,13 @@ export function Hero() {
         className="hero-fade absolute inset-x-0 -top-[6%] h-[112%] w-full object-cover"
         style={reduced ? undefined : { y: parallaxY }}
       />
-      <div className="absolute inset-0 bg-gradient-to-b from-white/85 via-white/55 to-white/90" />
+      <div className="absolute inset-0 bg-gradient-to-r from-black/70 via-black/35 to-transparent" />
+      <div className="absolute inset-x-0 bottom-0 h-44 bg-gradient-to-t from-black/50 via-black/15 to-transparent" />
 
       <div className="relative mx-auto w-full max-w-7xl px-4 pb-24 pt-36 md:px-8">
         <div className="max-w-3xl">
           <p
-            className="hero-in mb-5 inline-flex items-center gap-2 rounded-full border border-border bg-background/70 px-4 py-1.5 text-xs font-medium text-muted-foreground backdrop-blur"
+            className="hero-in mb-5 inline-flex items-center gap-2 rounded-full border border-white/30 bg-black/25 px-4 py-1.5 text-xs font-medium text-white/90 backdrop-blur-md"
             style={{ animationDelay: '0.2s' }}
           >
             <span className="size-1.5 rounded-full bg-accent" />
@@ -38,14 +39,14 @@ export function Hero() {
           </p>
 
           <h1
-            className="hero-in text-4xl font-semibold leading-[1.08] tracking-tight text-foreground sm:text-5xl lg:text-6xl"
+            className="hero-in text-4xl font-semibold leading-[1.08] tracking-tight text-white drop-shadow-[0_2px_16px_rgba(0,0,0,0.45)] sm:text-5xl lg:text-6xl"
             style={{ animationDelay: '0.32s' }}
           >
             “Outdoor gear — rencana boleh dadakan, gear harus matang.”
           </h1>
 
           <p
-            className="hero-in mt-6 max-w-xl text-base text-muted-foreground md:text-lg"
+            className="hero-in mt-6 max-w-xl text-base text-white/85 md:text-lg"
             style={{ animationDelay: '0.44s' }}
           >
             Beli, sewa, dan pre-order perlengkapan camping resmi. Katalog lengkap,
@@ -53,12 +54,16 @@ export function Hero() {
           </p>
 
           <div className="hero-in mt-8 flex flex-wrap items-center gap-3" style={{ animationDelay: '0.56s' }}>
-            <Button size="lg" className="rounded-full px-7 text-base font-semibold" asChild>
+            <Button
+              size="lg"
+              className="rounded-full bg-white px-7 text-base font-semibold text-neutral-950 hover:bg-white/90"
+              asChild
+            >
               <Link to="/katalog">Mulai Belanja</Link>
             </Button>
             <a
               href="#tentang"
-              className="inline-flex h-10 items-center justify-center rounded-full border border-foreground/30 px-7 text-base font-medium transition hover:bg-foreground hover:text-background"
+              className="inline-flex h-10 items-center justify-center rounded-full border border-white/40 bg-white/5 px-7 text-base font-medium text-white backdrop-blur-sm transition hover:bg-white hover:text-neutral-950"
             >
               Selengkapnya
             </a>
@@ -71,14 +76,14 @@ export function Hero() {
           {avatars.map((color) => (
             <span
               key={color}
-              className="size-9 rounded-full border-2 border-background"
+              className="size-9 rounded-full border-2 border-white/90 shadow-[0_0_0_1px_rgba(0,0,0,0.18)]"
               style={{ backgroundColor: color }}
               aria-hidden="true"
             />
           ))}
         </div>
-        <p className="text-sm font-medium text-foreground/80">
-          <strong className="font-semibold">800+</strong> Pelanggan Puas
+        <p className="text-sm font-medium text-white/90">
+          <strong className="font-semibold text-white">800+</strong> Pelanggan Puas
         </p>
       </div>
 
@@ -90,7 +95,7 @@ export function Hero() {
             target="_blank"
             rel="noreferrer"
             aria-label={s.label}
-            className="grid size-10 place-items-center rounded-full border border-foreground/15 text-foreground/70 transition hover:border-foreground hover:text-foreground"
+            className="grid size-10 place-items-center rounded-full border border-white/30 bg-black/15 text-white/80 backdrop-blur-sm transition hover:border-white hover:bg-white/10 hover:text-white"
           >
             <svg viewBox="0 0 24 24" className="size-4.5 fill-current" aria-hidden="true">
               <path d={s.icon} />
@@ -101,7 +106,7 @@ export function Hero() {
 
       <Link
         to="/tentang"
-        className="absolute bottom-8 right-4 hidden rounded-full border border-foreground/30 px-6 py-2.5 text-sm font-medium text-foreground transition hover:bg-foreground hover:text-background md:right-8 md:block"
+        className="absolute bottom-8 right-4 hidden rounded-full border border-white/40 bg-white/5 px-6 py-2.5 text-sm font-medium text-white backdrop-blur-sm transition hover:bg-white hover:text-neutral-950 md:right-8 md:block"
       >
         Selengkapnya
       </Link>
