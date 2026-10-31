@@ -1,7 +1,20 @@
 import { createServerFn } from '@tanstack/react-start'
-import { queryOptions } from '@tanstack/react-query'
+import { keepPreviousData, queryOptions } from '@tanstack/react-query'
 import { z } from 'zod'
-import { and, asc, count, desc, eq, gte, ilike, inArray, lte, sql, sum } from 'drizzle-orm'
+import {
+  and,
+  asc,
+  count,
+  desc,
+  eq,
+  gte,
+  ilike,
+  inArray,
+  lt,
+  lte,
+  sql,
+  sum,
+} from 'drizzle-orm'
 import { hashPassword } from 'better-auth/crypto'
 import { db } from '#/server/db'
 import {
@@ -30,10 +43,10 @@ import { customerLabel } from '#/lib/order-status'
 import { orderCode, pickRentUnits } from '#/server/fn/checkout'
 import { restockBuyOrder } from '#/server/fn/inventory'
 import { rupiah, slugify } from '#/lib/format'
-import { getSessionUser  } from '#/server/fn/auth'
+import { getSessionUser } from '#/server/fn/auth'
 import { rebuildRecommender } from '#/server/recommender/similarity'
 import { buildVectorSpace } from '#/server/recommender/vectorize'
-import type {SessionUser} from '#/server/fn/auth';
+import type { SessionUser } from '#/server/fn/auth'
 import { ACTIVE_RENTAL_STATUSES } from '#/server/fn/rental'
 import { queryKeys } from '#/lib/query-keys'
 
@@ -125,11 +138,15 @@ export const getAdminOverview = createServerFn({ method: 'GET' }).handler(
       db
         .select({ v: sum(sql`${orders.grandTotal} - ${orders.depositTotal}`) })
         .from(orders)
-        .where(and(eq(orders.paymentStatus, 'paid'), gte(orders.paidAt, dayStart))),
+        .where(
+          and(eq(orders.paymentStatus, 'paid'), gte(orders.paidAt, dayStart)),
+        ),
       db
         .select({ v: sum(sql`${orders.grandTotal} - ${orders.depositTotal}`) })
         .from(orders)
-        .where(and(eq(orders.paymentStatus, 'paid'), gte(orders.paidAt, monthStart))),
+        .where(
+          and(eq(orders.paymentStatus, 'paid'), gte(orders.paidAt, monthStart)),
+        ),
       db
         .select({ n: count() })
         .from(orders)
@@ -146,19 +163,31 @@ export const getAdminOverview = createServerFn({ method: 'GET' }).handler(
       db
         .select({ n: count() })
         .from(orders)
-        .where(and(eq(orders.type, 'preorder'), inArray(orders.status, ['awaiting_stock', 'pending_payment']))),
+        .where(
+          and(
+            eq(orders.type, 'preorder'),
+            inArray(orders.status, ['awaiting_stock', 'pending_payment']),
+          ),
+        ),
       db
         .select({ n: count() })
         .from(productVariants)
         .innerJoin(products, eq(products.id, productVariants.productId))
-        .where(and(eq(products.isActive, true), sql`${productVariants.stock} <= 3`)),
+        .where(
+          and(eq(products.isActive, true), sql`${productVariants.stock} <= 3`),
+        ),
       db
         .select({
           date: sql<string>`to_char(date_trunc('day', ${orders.paidAt}), 'YYYY-MM-DD')`,
           total: sum(sql`${orders.grandTotal} - ${orders.depositTotal}`),
         })
         .from(orders)
-        .where(and(eq(orders.paymentStatus, 'paid'), gte(orders.paidAt, new Date(now.getTime() - 30 * 86_400_000))))
+        .where(
+          and(
+            eq(orders.paymentStatus, 'paid'),
+            gte(orders.paidAt, new Date(now.getTime() - 30 * 86_400_000)),
+          ),
+        )
         .groupBy(sql`date_trunc('day', ${orders.paidAt})`)
         .orderBy(sql`date_trunc('day', ${orders.paidAt})`),
       db
@@ -186,7 +215,14 @@ export const getAdminOverview = createServerFn({ method: 'GET' }).handler(
         .innerJoin(orders, eq(orderItems.orderId, orders.id))
         .where(
           and(
-            inArray(orders.status, ['paid', 'processing', 'shipped', 'completed', 'rented', 'returned']),
+            inArray(orders.status, [
+              'paid',
+              'processing',
+              'shipped',
+              'completed',
+              'rented',
+              'returned',
+            ]),
             gte(orders.createdAt, new Date(now.getTime() - 30 * 86_400_000)),
           ),
         )
@@ -228,6 +264,126 @@ export const adminOverviewOptions = queryOptions({
   staleTime: 30_000,
 })
 
+// ── Seri pendapatan periode bebas (rentang custom) ───────────────────────────
+
+/** Batas rentang custom: ±3 bulan supaya query tetap ringan. */
+const SALES_RANGE_MAX_DAYS = 92
+
+const salesRangeSchema = z.object({
+  from: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+  to: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+})
+
+export type AdminSalesSeries = {
+  /** 'hour' bila rentangnya satu hari, selain itu 'day'. */
+  granularity: 'hour' | 'day'
+  points: Array<{ date: string; total: number }>
+  total: number
+}
+
+/** Tanggal 'YYYY-MM-DD' menurut kalender lokal (bukan UTC seperti `ymd`). */
+function ymdLocal(d: Date): string {
+  const pad = (n: number) => String(n).padStart(2, '0')
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`
+}
+
+/** 'YYYY-MM-DD' → Date tengah malam lokal, atau null bila tanggalnya tak valid. */
+function parseYmdLocal(value: string): Date | null {
+  const parts = value.split('-')
+  const nums = parts.map((p) => Number.parseInt(p, 10))
+  const [y, m, d] = nums
+  if (y === undefined || m === undefined || d === undefined) return null
+  const date = new Date(y, m - 1, d)
+  // Date akan "melimpah" (2026-02-30 → 2026-03-02); tolak itu.
+  if (
+    date.getFullYear() !== y ||
+    date.getMonth() !== m - 1 ||
+    date.getDate() !== d
+  ) {
+    return null
+  }
+  return date
+}
+
+export const getAdminSalesSeries = createServerFn({ method: 'GET' })
+  .validator((input: z.input<typeof salesRangeSchema>) =>
+    salesRangeSchema.parse(input ?? {}),
+  )
+  .handler(async ({ data }): Promise<AdminSalesSeries> => {
+    await requireAdmin()
+
+    let from = parseYmdLocal(data.from)
+    let to = parseYmdLocal(data.to)
+    if (!from || !to) throw new Error('RENTANG_TANGGAL_TIDAK_VALID')
+    if (from.getTime() > to.getTime()) [from, to] = [to, from]
+    const maxMs = SALES_RANGE_MAX_DAYS * 86_400_000
+    if (to.getTime() - from.getTime() > maxMs) {
+      from = new Date(to.getTime() - maxMs)
+    }
+
+    // Batas atas eksklusif: awal hari setelah `to`.
+    const rows = await db
+      .select({
+        paidAt: orders.paidAt,
+        total: sql<string>`${orders.grandTotal} - ${orders.depositTotal}`,
+      })
+      .from(orders)
+      .where(
+        and(
+          eq(orders.paymentStatus, 'paid'),
+          gte(orders.paidAt, from),
+          lt(orders.paidAt, new Date(to.getTime() + 86_400_000)),
+        ),
+      )
+
+    const granularity: AdminSalesSeries['granularity'] =
+      ymdLocal(from) === ymdLocal(to) ? 'hour' : 'day'
+
+    // Penting: pengelompokan dihitung di JavaScript memakai kalender lokal,
+    // supaya sepadan dengan label nol yang diisi sendiri (bukan timezone DB).
+    let points: Array<{ date: string; total: number }>
+    if (granularity === 'hour') {
+      const buckets = new Array<number>(24).fill(0)
+      for (const row of rows) {
+        if (!row.paidAt) continue
+        const hour = row.paidAt.getHours()
+        buckets[hour] = (buckets[hour] ?? 0) + Number(row.total ?? 0)
+      }
+      points = buckets.map((total, hour) => ({
+        date: `${String(hour).padStart(2, '0')}:00`,
+        total,
+      }))
+    } else {
+      const byDate = new Map<string, number>()
+      for (const row of rows) {
+        if (!row.paidAt) continue
+        const key = ymdLocal(row.paidAt)
+        byDate.set(key, (byDate.get(key) ?? 0) + Number(row.total ?? 0))
+      }
+      points = []
+      const days = Math.round((to.getTime() - from.getTime()) / 86_400_000) + 1
+      for (let i = 0; i < days; i++) {
+        const key = ymdLocal(new Date(from.getTime() + i * 86_400_000))
+        points.push({ date: key, total: byDate.get(key) ?? 0 })
+      }
+    }
+
+    return {
+      granularity,
+      points,
+      total: points.reduce((sum, p) => sum + p.total, 0),
+    }
+  })
+
+export const adminSalesOptions = (from: string, to: string) =>
+  queryOptions({
+    queryKey: queryKeys.admin.sales(from, to),
+    queryFn: () => getAdminSalesSeries({ data: { from, to } }),
+    // Saat ganti periode, titik lama tetap tampil sampai data baru tiba —
+    // grafik tidak berkedip kosong.
+    placeholderData: keepPreviousData,
+  })
+
 // ── Pengguna ─────────────────────────────────────────────────────────────────
 
 export const adminUsersSchema = z.object({
@@ -252,7 +408,9 @@ export type AdminUsersResult = {
 }
 
 export const getAdminUsers = createServerFn({ method: 'GET' })
-  .validator((input: z.input<typeof adminUsersSchema>) => adminUsersSchema.parse(input ?? {}))
+  .validator((input: z.input<typeof adminUsersSchema>) =>
+    adminUsersSchema.parse(input ?? {}),
+  )
   .handler(async ({ data }): Promise<AdminUsersResult> => {
     await requireAdmin()
     const pageSize = 20
@@ -267,7 +425,9 @@ export const getAdminUsers = createServerFn({ method: 'GET' })
         isActive: users.isActive,
         createdAt: users.createdAt,
         orderCount: count(orders.id),
-        totalSpent: sum(sql`case when ${orders.paymentStatus} = 'paid' then ${orders.grandTotal} else 0 end`),
+        totalSpent: sum(
+          sql`case when ${orders.paymentStatus} = 'paid' then ${orders.grandTotal} else 0 end`,
+        ),
       })
       .from(users)
       .leftJoin(orders, eq(orders.userId, users.id))
@@ -303,15 +463,31 @@ export const setUserActiveSchema = z.object({
 })
 
 export const setUserActive = createServerFn({ method: 'POST' })
-  .validator((input: z.infer<typeof setUserActiveSchema>) => setUserActiveSchema.parse(input))
+  .validator((input: z.infer<typeof setUserActiveSchema>) =>
+    setUserActiveSchema.parse(input),
+  )
   .handler(async ({ data }) => {
     const actor = await requireAdmin()
-    if (actor.id === data.userId) throw new Error('TIDAK_BISA_UBAH_DIRI_SENDIRI')
-    const [target] = await db.select().from(users).where(eq(users.id, data.userId)).limit(1)
+    if (actor.id === data.userId)
+      throw new Error('TIDAK_BISA_UBAH_DIRI_SENDIRI')
+    const [target] = await db
+      .select()
+      .from(users)
+      .where(eq(users.id, data.userId))
+      .limit(1)
     if (!target) throw new Error('USER_TIDAK_DITEMUKAN')
-    if (target.role === 'owner' && actor.role !== 'owner') throw new Error('AKSES_DITOLAK')
-    await db.update(users).set({ isActive: data.isActive }).where(eq(users.id, data.userId))
-    await audit(actor.id, data.isActive ? 'user.activate' : 'user.deactivate', 'user', data.userId)
+    if (target.role === 'owner' && actor.role !== 'owner')
+      throw new Error('AKSES_DITOLAK')
+    await db
+      .update(users)
+      .set({ isActive: data.isActive })
+      .where(eq(users.id, data.userId))
+    await audit(
+      actor.id,
+      data.isActive ? 'user.activate' : 'user.deactivate',
+      'user',
+      data.userId,
+    )
     return { ok: true as const }
   })
 
@@ -321,11 +497,17 @@ export const setUserRoleSchema = z.object({
 })
 
 export const setUserRole = createServerFn({ method: 'POST' })
-  .validator((input: z.infer<typeof setUserRoleSchema>) => setUserRoleSchema.parse(input))
+  .validator((input: z.infer<typeof setUserRoleSchema>) =>
+    setUserRoleSchema.parse(input),
+  )
   .handler(async ({ data }) => {
     const actor = await requireOwner()
-    if (actor.id === data.userId) throw new Error('TIDAK_BISA_UBAH_DIRI_SENDIRI')
-    await db.update(users).set({ role: data.role }).where(eq(users.id, data.userId))
+    if (actor.id === data.userId)
+      throw new Error('TIDAK_BISA_UBAH_DIRI_SENDIRI')
+    await db
+      .update(users)
+      .set({ role: data.role })
+      .where(eq(users.id, data.userId))
     await audit(actor.id, 'user.role', 'user', data.userId, { role: data.role })
     return { ok: true as const }
   })
@@ -336,17 +518,27 @@ export const resetPasswordSchema = z.object({
 })
 
 export const resetUserPassword = createServerFn({ method: 'POST' })
-  .validator((input: z.infer<typeof resetPasswordSchema>) => resetPasswordSchema.parse(input))
+  .validator((input: z.infer<typeof resetPasswordSchema>) =>
+    resetPasswordSchema.parse(input),
+  )
   .handler(async ({ data }) => {
     const actor = await requireAdmin()
     const [cred] = await db
       .select({ id: accounts.id })
       .from(accounts)
-      .where(and(eq(accounts.accountId, data.userId), eq(accounts.providerId, 'credential')))
+      .where(
+        and(
+          eq(accounts.accountId, data.userId),
+          eq(accounts.providerId, 'credential'),
+        ),
+      )
       .limit(1)
     if (!cred) throw new Error('AKUN_PASSWORD_TIDAK_DITEMUKAN')
     const hashed = await hashPassword(data.password)
-    await db.update(accounts).set({ password: hashed }).where(eq(accounts.id, cred.id))
+    await db
+      .update(accounts)
+      .set({ password: hashed })
+      .where(eq(accounts.id, cred.id))
     await audit(actor.id, 'user.reset_password', 'user', data.userId)
     return { ok: true as const }
   })
@@ -381,7 +573,9 @@ export type AdminProductsResult = {
 }
 
 export const getAdminProducts = createServerFn({ method: 'GET' })
-  .validator((input: z.input<typeof adminProductsSchema>) => adminProductsSchema.parse(input ?? {}))
+  .validator((input: z.input<typeof adminProductsSchema>) =>
+    adminProductsSchema.parse(input ?? {}),
+  )
   .handler(async ({ data }): Promise<AdminProductsResult> => {
     await requireAdmin()
     const pageSize = 20
@@ -417,7 +611,10 @@ export const getAdminProducts = createServerFn({ method: 'GET' })
       .limit(pageSize)
       .offset((data.page - 1) * pageSize)
 
-    const [totalRow] = await db.select({ n: count() }).from(products).where(where)
+    const [totalRow] = await db
+      .select({ n: count() })
+      .from(products)
+      .where(where)
 
     return {
       rows: rows.map((r) => ({
@@ -485,12 +682,18 @@ export const getAdminProduct = createServerFn({ method: 'GET' })
         weight: attributes.weight,
       })
       .from(productAttributeValues)
-      .innerJoin(attributes, eq(attributes.id, productAttributeValues.attributeId))
+      .innerJoin(
+        attributes,
+        eq(attributes.id, productAttributeValues.attributeId),
+      )
       .where(eq(productAttributeValues.productId, data.id))
 
     return {
       product,
-      variants: variants.map((v) => ({ ...v, rentalUnitCount: Number(v.rentalUnitCount) })),
+      variants: variants.map((v) => ({
+        ...v,
+        rentalUnitCount: Number(v.rentalUnitCount),
+      })),
       images,
       values,
     }
@@ -535,7 +738,9 @@ async function uniqueSlug(base: string, excludeId?: string): Promise<string> {
 }
 
 export const saveProduct = createServerFn({ method: 'POST' })
-  .validator((input: z.input<typeof saveProductSchema>) => saveProductSchema.parse(input))
+  .validator((input: z.input<typeof saveProductSchema>) =>
+    saveProductSchema.parse(input),
+  )
   .handler(async ({ data }) => {
     const actor = await requireAdmin()
     const slug = await uniqueSlug(data.name, data.id)
@@ -591,7 +796,9 @@ export const saveVariantSchema = z.object({
 })
 
 export const saveVariant = createServerFn({ method: 'POST' })
-  .validator((input: z.input<typeof saveVariantSchema>) => saveVariantSchema.parse(input))
+  .validator((input: z.input<typeof saveVariantSchema>) =>
+    saveVariantSchema.parse(input),
+  )
   .handler(async ({ data }) => {
     const actor = await requireAdmin()
     const values = {
@@ -604,7 +811,10 @@ export const saveVariant = createServerFn({ method: 'POST' })
       salePriceOverride: data.salePriceOverride,
     }
     if (data.id) {
-      await db.update(productVariants).set(values).where(eq(productVariants.id, data.id))
+      await db
+        .update(productVariants)
+        .set(values)
+        .where(eq(productVariants.id, data.id))
       await audit(actor.id, 'variant.update', 'variant', data.id)
       return { id: data.id }
     }
@@ -626,20 +836,21 @@ export const deleteVariant = createServerFn({ method: 'POST' })
   })
 
 export const addProductImage = createServerFn({ method: 'POST' })
-  .validator(
-    (input: { productId: string; r2Key: string; alt?: string }) =>
-      z
-        .object({
-          productId: z.uuid(),
-          r2Key: z.string().min(3).max(300),
-          alt: z.string().max(200).optional(),
-        })
-        .parse(input),
+  .validator((input: { productId: string; r2Key: string; alt?: string }) =>
+    z
+      .object({
+        productId: z.uuid(),
+        r2Key: z.string().min(3).max(300),
+        alt: z.string().max(200).optional(),
+      })
+      .parse(input),
   )
   .handler(async ({ data }) => {
     const actor = await requireAdmin()
     const [maxRow] = await db
-      .select({ m: sql<number | null>`coalesce(max(${productImages.sort}), -1)` })
+      .select({
+        m: sql<number | null>`coalesce(max(${productImages.sort}), -1)`,
+      })
       .from(productImages)
       .where(eq(productImages.productId, data.productId))
     const [created] = await db
@@ -668,7 +879,11 @@ export const duplicateProduct = createServerFn({ method: 'POST' })
   .validator((input: { id: string }) => z.object({ id: z.uuid() }).parse(input))
   .handler(async ({ data }) => {
     const actor = await requireAdmin()
-    const [src] = await db.select().from(products).where(eq(products.id, data.id)).limit(1)
+    const [src] = await db
+      .select()
+      .from(products)
+      .where(eq(products.id, data.id))
+      .limit(1)
     if (!src) throw new Error('PRODUK_TIDAK_DITEMUKAN')
     const slug = await uniqueSlug(`${src.name} salinan`)
     const [{ id: newId }] = await db
@@ -699,19 +914,23 @@ export const duplicateProduct = createServerFn({ method: 'POST' })
         })),
       )
     }
-    await audit(actor.id, 'product.duplicate', 'product', newId, { from: data.id })
+    await audit(actor.id, 'product.duplicate', 'product', newId, {
+      from: data.id,
+    })
     scheduleRebuild()
     return { id: newId }
   })
 
 export const toggleProductActive = createServerFn({ method: 'POST' })
-  .validator(
-    (input: { id: string; isActive: boolean }) =>
-      z.object({ id: z.uuid(), isActive: z.boolean() }).parse(input),
+  .validator((input: { id: string; isActive: boolean }) =>
+    z.object({ id: z.uuid(), isActive: z.boolean() }).parse(input),
   )
   .handler(async ({ data }) => {
     const actor = await requireAdmin()
-    await db.update(products).set({ isActive: data.isActive }).where(eq(products.id, data.id))
+    await db
+      .update(products)
+      .set({ isActive: data.isActive })
+      .where(eq(products.id, data.id))
     await audit(actor.id, 'product.toggle_active', 'product', data.id, {
       isActive: data.isActive,
     })
@@ -721,7 +940,9 @@ export const toggleProductActive = createServerFn({ method: 'POST' })
 
 export const saveProductAttributesSchema = z.object({
   productId: z.uuid(),
-  values: z.array(z.object({ attributeId: z.uuid(), value: z.unknown() })).max(50),
+  values: z
+    .array(z.object({ attributeId: z.uuid(), value: z.unknown() }))
+    .max(50),
 })
 
 export const saveProductAttributes = createServerFn({ method: 'POST' })
@@ -813,7 +1034,9 @@ function adminOrderWhere(data: z.infer<typeof adminOrdersSchema>) {
 }
 
 export const getAdminOrders = createServerFn({ method: 'GET' })
-  .validator((input: z.input<typeof adminOrdersSchema>) => adminOrdersSchema.parse(input ?? {}))
+  .validator((input: z.input<typeof adminOrdersSchema>) =>
+    adminOrdersSchema.parse(input ?? {}),
+  )
   .handler(async ({ data }) => {
     await requireAdmin()
     const pageSize = 20
@@ -861,14 +1084,18 @@ export const getAdminOrders = createServerFn({ method: 'GET' })
     }
   })
 
-export const adminOrdersOptions = (params: Partial<z.infer<typeof adminOrdersSchema>>) =>
+export const adminOrdersOptions = (
+  params: Partial<z.infer<typeof adminOrdersSchema>>,
+) =>
   queryOptions({
     queryKey: queryKeys.admin.orders(params),
     queryFn: () => getAdminOrders({ data: params }),
   })
 
 export const exportAdminOrders = createServerFn({ method: 'GET' })
-  .validator((input: z.input<typeof adminOrdersSchema>) => adminOrdersSchema.parse(input ?? {}))
+  .validator((input: z.input<typeof adminOrdersSchema>) =>
+    adminOrdersSchema.parse(input ?? {}),
+  )
   .handler(async ({ data }): Promise<string> => {
     await requireAdmin()
     const rows = await db
@@ -891,7 +1118,17 @@ export const exportAdminOrders = createServerFn({ method: 'GET' })
       .limit(2000)
 
     const esc = (v: unknown) => `"${String(v ?? '').replaceAll('"', '""')}"`
-    const header = ['kode', 'pelanggan', 'channel', 'tipe', 'status', 'pembayaran', 'total', 'dibuat', 'dibayar']
+    const header = [
+      'kode',
+      'pelanggan',
+      'channel',
+      'tipe',
+      'status',
+      'pembayaran',
+      'total',
+      'dibuat',
+      'dibayar',
+    ]
     const lines = rows.map((r) =>
       [
         r.code,
@@ -929,7 +1166,10 @@ export const getAdminOrder = createServerFn({ method: 'GET' })
     const order = {
       order: {
         ...row.order,
-        shippingAddress: (row.order.shippingAddress ?? null) as Record<string, string> | null,
+        shippingAddress: (row.order.shippingAddress ?? null) as Record<
+          string,
+          string
+        > | null,
       },
       customer: row.customer,
       customerName: row.customerName,
@@ -1008,7 +1248,9 @@ export const updateOrderStatusSchema = z.object({
 })
 
 export const updateOrderStatus = createServerFn({ method: 'POST' })
-  .validator((input: z.infer<typeof updateOrderStatusSchema>) => updateOrderStatusSchema.parse(input))
+  .validator((input: z.infer<typeof updateOrderStatusSchema>) =>
+    updateOrderStatusSchema.parse(input),
+  )
   .handler(async ({ data }) => {
     const actor = await requireAdmin()
     const [order] = await db
@@ -1018,8 +1260,10 @@ export const updateOrderStatus = createServerFn({ method: 'POST' })
       .limit(1)
     if (!order) throw new Error('ORDER_TIDAK_DITEMUKAN')
     const allowed = ORDER_TRANSITIONS[order.status] ?? []
-    if (!allowed.includes(data.to)) throw new Error('TRANSISI_STATUS_TIDAK_VALID')
-    if (data.to === 'shipped' && !data.trackingNo) throw new Error('NOMOR_RESI_WAJIB')
+    if (!allowed.includes(data.to))
+      throw new Error('TRANSISI_STATUS_TIDAK_VALID')
+    if (data.to === 'shipped' && !data.trackingNo)
+      throw new Error('NOMOR_RESI_WAJIB')
 
     await db.transaction(async (tx) => {
       await tx
@@ -1027,7 +1271,9 @@ export const updateOrderStatus = createServerFn({ method: 'POST' })
         .set({
           status: data.to,
           ...(data.trackingNo ? { trackingNo: data.trackingNo } : {}),
-          ...(data.to === 'paid' && !order.paidAt ? { paidAt: new Date() } : {}),
+          ...(data.to === 'paid' && !order.paidAt
+            ? { paidAt: new Date() }
+            : {}),
         })
         .where(eq(orders.id, data.orderId))
       await tx.insert(orderStatusLogs).values({
@@ -1068,7 +1314,8 @@ export async function returnRentalCore(
     .limit(1)
   if (!order) throw new Error('ORDER_TIDAK_DITEMUKAN')
   if (order.type !== 'rent') throw new Error('BAKAN_ORDER_SEWA')
-  if (!isReturnableRentalStatus(order.status)) throw new Error('STATUS_SEWA_TIDAK_VALID')
+  if (!isReturnableRentalStatus(order.status))
+    throw new Error('STATUS_SEWA_TIDAK_VALID')
 
   const items = await db
     .select()
@@ -1076,7 +1323,10 @@ export async function returnRentalCore(
     .where(eq(orderItems.orderId, data.orderId))
 
   const returnedAt = new Date()
-  const depositRefunded = Math.min(Math.max(0, data.depositRefund), order.depositTotal)
+  const depositRefunded = Math.min(
+    Math.max(0, data.depositRefund),
+    order.depositTotal,
+  )
 
   await db.transaction(async (tx) => {
     for (const item of items) {
@@ -1130,7 +1380,9 @@ export async function returnRentalCore(
 }
 
 export const returnRental = createServerFn({ method: 'POST' })
-  .validator((input: z.infer<typeof rentalReturnSchema>) => rentalReturnSchema.parse(input))
+  .validator((input: z.infer<typeof rentalReturnSchema>) =>
+    rentalReturnSchema.parse(input),
+  )
   .handler(async ({ data }) => {
     const actor = await requireAdmin()
     return returnRentalCore(data, actor)
@@ -1153,9 +1405,17 @@ export const posOrderSchema = z
   .superRefine((v, ctx) => {
     if (v.mode === 'rent') {
       if (!v.rentStart || !v.rentEnd) {
-        ctx.addIssue({ code: 'custom', message: 'Tanggal sewa wajib diisi', path: ['rentStart'] })
+        ctx.addIssue({
+          code: 'custom',
+          message: 'Tanggal sewa wajib diisi',
+          path: ['rentStart'],
+        })
       } else if (new Date(v.rentEnd) <= new Date(v.rentStart)) {
-        ctx.addIssue({ code: 'custom', message: 'Tanggal selesai harus setelah mulai', path: ['rentEnd'] })
+        ctx.addIssue({
+          code: 'custom',
+          message: 'Tanggal selesai harus setelah mulai',
+          path: ['rentEnd'],
+        })
       }
     }
   })
@@ -1192,12 +1452,15 @@ export async function createPosOrderCore(
     const row = byId.get(line.variantId)
     if (!row || !row.isActive) throw new Error('PRODUK_TIDAK_DITEMUKAN')
     if (data.mode === 'rent') {
-      if (!row.isRentable || !row.rentPricePerDay) throw new Error('PRODUK_TIDAK_DISEWAKAN')
+      if (!row.isRentable || !row.rentPricePerDay)
+        throw new Error('PRODUK_TIDAK_DISEWAKAN')
       const lineRent = row.rentPricePerDay * rentDays * line.qty
       subtotal += lineRent
       depositTotal += rentalDeposit(lineRent)
     } else {
-      const unit = Math.round(row.salePrice - (row.salePrice * row.discountPercent) / 100)
+      const unit = Math.round(
+        row.salePrice - (row.salePrice * row.discountPercent) / 100,
+      )
       if (row.stock < line.qty) throw new Error('STOK_KURANG')
       subtotal += unit * line.qty
     }
@@ -1220,7 +1483,10 @@ export async function createPosOrderCore(
         grandTotal,
         paymentStatus: 'paid',
         paidAt: new Date(),
-        notes: [`POS ${data.paymentMethod.toUpperCase()}`, `Kasir: ${actor.name}`]
+        notes: [
+          `POS ${data.paymentMethod.toUpperCase()}`,
+          `Kasir: ${actor.name}`,
+        ]
           .filter(Boolean)
           .join(' · '),
       })
@@ -1232,7 +1498,10 @@ export async function createPosOrderCore(
           .update(productVariants)
           .set({ stock: sql`stock - ${line.qty}` })
           .where(
-            and(eq(productVariants.id, line.variantId), sql`${productVariants.stock} >= ${line.qty}`),
+            and(
+              eq(productVariants.id, line.variantId),
+              sql`${productVariants.stock} >= ${line.qty}`,
+            ),
           )
           .returning({ id: productVariants.id })
         if (updated.length === 0) throw new Error('STOK_KURANG')
@@ -1241,7 +1510,8 @@ export async function createPosOrderCore(
           variantId: line.variantId,
           nameSnapshot: line.row.name,
           unitPrice: Math.round(
-            line.row.salePrice - (line.row.salePrice * line.row.discountPercent) / 100,
+            line.row.salePrice -
+              (line.row.salePrice * line.row.discountPercent) / 100,
           ),
           qty: line.qty,
         })
@@ -1296,16 +1566,22 @@ export async function createPosOrderCore(
 }
 
 export const createPosOrder = createServerFn({ method: 'POST' })
-  .validator((input: z.infer<typeof posOrderSchema>) => posOrderSchema.parse(input))
+  .validator((input: z.infer<typeof posOrderSchema>) =>
+    posOrderSchema.parse(input),
+  )
   .handler(async ({ data }) => {
     const actor = await requireAdmin()
     return createPosOrderCore(data, actor)
   })
 
-export const posVariantsSchema = z.object({ q: z.string().trim().max(80).optional() })
+export const posVariantsSchema = z.object({
+  q: z.string().trim().max(80).optional(),
+})
 
 export const searchPosVariants = createServerFn({ method: 'GET' })
-  .validator((input: z.input<typeof posVariantsSchema>) => posVariantsSchema.parse(input ?? {}))
+  .validator((input: z.input<typeof posVariantsSchema>) =>
+    posVariantsSchema.parse(input ?? {}),
+  )
   .handler(async ({ data }) => {
     await requireAdmin()
     const conds = [eq(products.isActive, true)]
@@ -1336,10 +1612,12 @@ export const posVariantsOptions = (q: string) =>
 
 // ── Atribut & Kamus ──────────────────────────────────────────────────────────
 
-export const getAttributes = createServerFn({ method: 'GET' }).handler(async () => {
-  await requireAdmin()
-  return db.select().from(attributes).orderBy(attributes.name)
-})
+export const getAttributes = createServerFn({ method: 'GET' }).handler(
+  async () => {
+    await requireAdmin()
+    return db.select().from(attributes).orderBy(attributes.name)
+  },
+)
 
 export const attributesOptions = queryOptions({
   queryKey: queryKeys.admin.attributes(),
@@ -1351,21 +1629,28 @@ export const saveAttributeSchema = z.object({
   name: z.string().trim().min(2).max(80),
   key: z.string().trim().min(2).max(40).optional(),
   type: z.enum(['text', 'enum', 'number', 'boolean']).default('text'),
-  allowedValues: z.array(z.union([z.string(), z.number(), z.boolean()])).max(50).default([]),
+  allowedValues: z
+    .array(z.union([z.string(), z.number(), z.boolean()]))
+    .max(50)
+    .default([]),
   weight: z.number().min(0).max(10).default(1),
   isFilterable: z.boolean().default(true),
   showInSpec: z.boolean().default(true),
 })
 
 export const saveAttribute = createServerFn({ method: 'POST' })
-  .validator((input: z.input<typeof saveAttributeSchema>) => saveAttributeSchema.parse(input))
+  .validator((input: z.input<typeof saveAttributeSchema>) =>
+    saveAttributeSchema.parse(input),
+  )
   .handler(async ({ data }) => {
     const actor = await requireAdmin()
     const values = {
       name: data.name,
       key: slugify(data.key || data.name),
       type: data.type,
-      allowedValues: data.allowedValues.length ? (data.allowedValues as never) : null,
+      allowedValues: data.allowedValues.length
+        ? (data.allowedValues as never)
+        : null,
       weight: data.weight,
       isFilterable: data.isFilterable,
       showInSpec: data.showInSpec,
@@ -1402,7 +1687,9 @@ export const dictionarySchema = z.object({
 })
 
 export const getDictionaryTerms = createServerFn({ method: 'GET' })
-  .validator((input: z.input<typeof dictionarySchema>) => dictionarySchema.parse(input ?? {}))
+  .validator((input: z.input<typeof dictionarySchema>) =>
+    dictionarySchema.parse(input ?? {}),
+  )
   .handler(async ({ data }) => {
     await requireAdmin()
     const pageSize = 20
@@ -1422,7 +1709,10 @@ export const getDictionaryTerms = createServerFn({ method: 'GET' })
       .orderBy(dictionaryTerms.kind, dictionaryTerms.term)
       .limit(pageSize)
       .offset((data.page - 1) * pageSize)
-    const [totalRow] = await db.select({ n: count() }).from(dictionaryTerms).where(where)
+    const [totalRow] = await db
+      .select({ n: count() })
+      .from(dictionaryTerms)
+      .where(where)
 
     return { rows, total: Number(totalRow?.n ?? 0), page: data.page, pageSize }
   })
@@ -1445,12 +1735,21 @@ export const saveTermSchema = z.object({
 })
 
 export const saveTerm = createServerFn({ method: 'POST' })
-  .validator((input: z.input<typeof saveTermSchema>) => saveTermSchema.parse(input))
+  .validator((input: z.input<typeof saveTermSchema>) =>
+    saveTermSchema.parse(input),
+  )
   .handler(async ({ data }) => {
     const actor = await requireAdmin()
-    const values = { term: data.term, canonical: data.canonical, kind: data.kind }
+    const values = {
+      term: data.term,
+      canonical: data.canonical,
+      kind: data.kind,
+    }
     if (data.id) {
-      await db.update(dictionaryTerms).set(values).where(eq(dictionaryTerms.id, data.id))
+      await db
+        .update(dictionaryTerms)
+        .set(values)
+        .where(eq(dictionaryTerms.id, data.id))
       await audit(actor.id, 'dictionary.update', 'dictionary', data.id)
       scheduleRebuild()
       return { id: data.id }
@@ -1476,21 +1775,23 @@ export const deleteTerm = createServerFn({ method: 'POST' })
 
 // ── Rekomendasi (debug) ──────────────────────────────────────────────────────
 
-export const getRecommenderStats = createServerFn({ method: 'GET' }).handler(async () => {
-  await requireAdmin()
-  const [p, v, s, u] = await Promise.all([
-    db.select({ n: count() }).from(products),
-    db.select({ n: count() }).from(productVectors),
-    db.select({ n: count() }).from(productSimilarity),
-    db.select({ n: count() }).from(userProfileVectors),
-  ])
-  return {
-    products: Number(p[0]?.n ?? 0),
-    vectors: Number(v[0]?.n ?? 0),
-    similarities: Number(s[0]?.n ?? 0),
-    profiles: Number(u[0]?.n ?? 0),
-  }
-})
+export const getRecommenderStats = createServerFn({ method: 'GET' }).handler(
+  async () => {
+    await requireAdmin()
+    const [p, v, s, u] = await Promise.all([
+      db.select({ n: count() }).from(products),
+      db.select({ n: count() }).from(productVectors),
+      db.select({ n: count() }).from(productSimilarity),
+      db.select({ n: count() }).from(userProfileVectors),
+    ])
+    return {
+      products: Number(p[0]?.n ?? 0),
+      vectors: Number(v[0]?.n ?? 0),
+      similarities: Number(s[0]?.n ?? 0),
+      profiles: Number(u[0]?.n ?? 0),
+    }
+  },
+)
 
 export const recommenderStatsOptions = queryOptions({
   queryKey: queryKeys.admin.recommender(),
@@ -1510,7 +1811,10 @@ export const getRecommenderProductDebug = createServerFn({ method: 'GET' })
 
     const space = await buildVectorSpace()
     const vecRows = await db
-      .select({ vector: productVectors.vector, version: productVectors.version })
+      .select({
+        vector: productVectors.vector,
+        version: productVectors.version,
+      })
       .from(productVectors)
       .where(eq(productVectors.productId, id))
       .limit(1)
@@ -1537,7 +1841,13 @@ export const getRecommenderProductDebug = createServerFn({ method: 'GET' })
       .orderBy(desc(productSimilarity.score))
       .limit(10)
 
-    return { name: prod.name, vocabSize: space.vocab.length, hasVector: Boolean(vecRow), terms, similar }
+    return {
+      name: prod.name,
+      vocabSize: space.vocab.length,
+      hasVector: Boolean(vecRow),
+      terms,
+      similar,
+    }
   })
 
 export const recommenderProductOptions = (id: string) =>
@@ -1546,7 +1856,9 @@ export const recommenderProductOptions = (id: string) =>
     queryFn: () => getRecommenderProductDebug({ data: id }),
   })
 
-export const rebuildRecommenderNow = createServerFn({ method: 'POST' }).handler(async () => {
-  await requireAdmin()
-  return rebuildRecommender()
-})
+export const rebuildRecommenderNow = createServerFn({ method: 'POST' }).handler(
+  async () => {
+    await requireAdmin()
+    return rebuildRecommender()
+  },
+)

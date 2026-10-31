@@ -605,6 +605,85 @@
   height: 300px;
 }
 
+/* ── Layar sempit (mis. iPhone 15, 393px) ──────────────────────────────────
+ * Tipografi ditgecilkan supaya angka KPI dan judul tidak memaksa dua baris,
+ * serta header kartu berisi tombol periode ditata ulang: total tetap di sebelah
+ * judul, grup tombol turun ke barisnya sendiri dan meregang penuh (dulu tombol
+ * "Custom" terpotong keluar kartu). */
+@media (max-width: 47.99rem) {
+  .admin-content .page {
+    --page-title-font-size: 1.375rem;
+    --page-description-font-size: 0.8125rem;
+  }
+  .admin-content .card__title {
+    font-size: 0.875rem;
+  }
+  .admin-kpi-card .card__body {
+    gap: calc(var(--spacing) * 3);
+  }
+  .admin-kpi-card__head {
+    gap: calc(var(--spacing) * 2);
+  }
+  .admin-kpi-card__label {
+    font-size: 0.625rem;
+    letter-spacing: 0.05em;
+  }
+  .admin-kpi-card__value {
+    font-size: 1.25rem;
+  }
+  .admin-kpi-card__hint {
+    font-size: 0.6875rem;
+  }
+  .admin-metrics__value {
+    font-size: 1.375rem;
+  }
+  .admin-chart {
+    height: 260px;
+  }
+
+  /* Tabel ringkas dalam kartu: sel lebih rapat supaya kolom Status/Total muat
+   * penuh tanpa harus digeser (lebar alami tabel melebihi kartu). */
+  .admin-content .card .table {
+    --table-cell-padding-inline: var(--spacing);
+    --table-edge-padding: calc(var(--spacing) * 1.5);
+  }
+
+  /* "display: contents" pada pembungkus aksi: total dan tombol periode jadi
+   * anak langsung header sehingga total menempel judul, tombol wrap sendiri.
+   * Catatan: selektor memakai descendant (bukan ">") karena anak .ms-auto
+   * tetap DOM child .ms-auto walau ikut tata letak header. */
+  .admin-content .card__header:has(.toggle-group) {
+    flex-wrap: wrap;
+    row-gap: calc(var(--spacing) * 3);
+    padding-block: calc(var(--spacing) * 3.5);
+  }
+  .admin-content .card__header:has(.toggle-group) > .ms-auto {
+    display: contents;
+  }
+  .admin-content .card__header:has(.toggle-group) .card__title {
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+  .admin-content .card__header:has(.toggle-group) .admin-panel-meta {
+    flex: 0 0 auto;
+    text-align: end;
+  }
+  .admin-content .card__header:has(.toggle-group) .toggle-group {
+    flex: 1 0 100%;
+    width: 100%;
+    max-width: none;
+    overflow-x: visible;
+    display: flex;
+  }
+  .admin-content .card__header:has(.toggle-group) .toggle-group .toggle {
+    flex: 1 1 0;
+    min-width: 0;
+    justify-content: center;
+    padding-inline: calc(var(--spacing) * 2);
+    font-size: 0.75rem;
+  }
+}
+
 /* ── Sticky action bar (halaman form) ──────────────────────────────────── */
 .admin-sticky-bar {
   position: sticky;
@@ -613,10 +692,13 @@
   display: flex;
   align-items: center;
   gap: calc(var(--spacing) * 3);
-  padding: calc(var(--spacing) * 3) var(--admin-content-px, calc(var(--spacing) * 5));
+  padding: calc(var(--spacing) * 3)
+    var(--admin-content-px, calc(var(--spacing) * 5));
   margin-inline: calc(var(--admin-content-px, calc(var(--spacing) * 5)) * -1);
   margin-block-start: calc(var(--spacing) * 4);
-  margin-block-end: calc(var(--admin-content-py, calc(var(--spacing) * 6)) * -1);
+  margin-block-end: calc(
+    var(--admin-content-py, calc(var(--spacing) * 6)) * -1
+  );
   background: color-mix(in oklch, var(--color-surface) 88%, transparent);
   backdrop-filter: blur(8px);
   border-top: var(--st-border-width) solid var(--color-border);

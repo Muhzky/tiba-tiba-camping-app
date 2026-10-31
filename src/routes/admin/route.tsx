@@ -61,6 +61,26 @@ const MENU: MenuGroup[] = [
   },
 ]
 
+/**
+ * Nama halaman aktif untuk indikator di topbar: cocokkan pathname dengan
+ * entri menu terpanjang yang membentanginya (mis. /admin/transaksi/123 →
+ * "Transaksi"), lengkap dengan judul grupnya.
+ */
+function pageLabelOf(pathname: string): { group: string; page: string } {
+  let best: { group: string; page: string; length: number } | null = null
+  for (const group of MENU) {
+    for (const item of group.items) {
+      const hit =
+        pathname === item.to ||
+        (!item.exact && pathname.startsWith(`${item.to}/`))
+      if (hit && (!best || item.to.length > best.length)) {
+        best = { group: group.title, page: item.label, length: item.to.length }
+      }
+    }
+  }
+  return best ?? { group: 'Panel', page: 'Admin' }
+}
+
 export const Route = createFileRoute('/admin')({
   head: () => ({
     meta: [{ title: 'Admin — Tiba Tiba Camping' }],
@@ -93,6 +113,7 @@ function initialsOf(name: string): string {
 function AdminLayout() {
   const user = Route.useLoaderData()
   const pathname = useRouterState({ select: (s) => s.location.pathname })
+  const pageLabel = pageLabelOf(pathname)
   const signOutMutation = useLogout()
   useLayoutStylesheet('admin')
 
@@ -263,6 +284,17 @@ function AdminLayout() {
             <Link to="/admin" className="font-semibold lg:hidden">
               Tiba Tiba Camping
             </Link>
+
+            {/* Indikator halaman aktif (desktop): grup kecil + nama halaman. */}
+            <div className="hidden items-baseline gap-2.5 lg:flex">
+              <span className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                {pageLabel.group}
+              </span>
+              <span aria-hidden="true" className="text-muted-foreground/40">
+                /
+              </span>
+              <span className="text-sm font-semibold">{pageLabel.page}</span>
+            </div>
 
             <div className="ms-auto flex items-center gap-1">
               <Link

@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from '@tanstack/react-router'
-import { useEffect, useRef } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import type { LucideIcon } from 'lucide-react'
 import { useQuery } from '@tanstack/react-query'
 import Chart from 'chart.js/auto'
@@ -11,8 +11,10 @@ import {
   TriangleAlert,
   Wallet,
 } from 'lucide-react'
-import { adminOverviewOptions } from '#/server/fn/admin'
-import { rupiah } from '#/lib/format'
+import { adminOverviewOptions, adminSalesOptions } from '#/server/fn/admin'
+import type { AdminSalesSeries } from '#/server/fn/admin'
+import { meOptions } from '#/server/fn/auth'
+import { formatDate, rupiah } from '#/lib/format'
 import { ORDER_TYPE_LABEL, customerLabel } from '#/lib/order-status'
 import { AdminPage } from '#/components/admin/page'
 import { AdminCard } from '#/components/admin/card'
@@ -21,9 +23,59 @@ import { OrderStatusBadge } from '#/components/admin/badge'
 import { EmptyState } from '#/components/admin/empty'
 import { buttonClass } from '#/components/admin/button'
 
+type PeriodId = 'today' | '7d' | '30d' | 'custom'
+
+const PERIODS: Array<{ id: PeriodId; label: string }> = [
+  { id: 'today', label: 'Hari ini' },
+  { id: '7d', label: '7 hari' },
+  { id: '30d', label: '30 hari' },
+  { id: 'custom', label: 'Custom' },
+]
+
+/** 'YYYY-MM-DD' menurut kalender lokal (server). */
+function ymdOf(d: Date): string {
+  const pad = (n: number) => String(n).padStart(2, '0')
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`
+}
+
+function daysAgo(n: number): string {
+  return ymdOf(new Date(Date.now() - n * 86_400_000))
+}
+
+/** Rentang tanggal aktif (from, to) untuk satu periode. */
+function rangeForPeriod(
+  period: PeriodId,
+  customFrom: string,
+  customTo: string,
+): { from: string; to: string } {
+  switch (period) {
+    case 'today':
+      return { from: ymdOf(new Date()), to: ymdOf(new Date()) }
+    case '7d':
+      return { from: daysAgo(6), to: ymdOf(new Date()) }
+    case '30d':
+      return { from: daysAgo(29), to: ymdOf(new Date()) }
+    case 'custom':
+      return { from: customFrom, to: customTo }
+  }
+}
+
+function chartLabelOf(point: AdminSalesSeries['points'][number]): string {
+  // Titik per jam berlabel 'HH:00'; titik per hari berlabel 'YYYY-MM-DD'.
+  return point.date.length > 5
+    ? `${point.date.slice(8, 10)}/${point.date.slice(5, 7)}`
+    : point.date
+}
+
 export const Route = createFileRoute('/admin/')({
   loader: async ({ context }) => {
-    await context.queryClient.ensureQueryData(adminOverviewOptions)
+    const range = rangeForPeriod('30d', '', '')
+    await Promise.all([
+      context.queryClient.ensureQueryData(adminOverviewOptions),
+      context.queryClient.ensureQueryData(
+        adminSalesOptions(range.from, range.to),
+      ),
+    ])
   },
   component: OverviewPage,
   // Kerangka dashboard tampil seketika saat pindah dari halaman login; data KPI
@@ -72,22 +124,41 @@ function KpiCard({
 
 function OverviewPage() {
   const { data } = useQuery(adminOverviewOptions)
+  const { data: me } = useQuery(meOptions)
+  const [period, setPeriod] = useState<PeriodId>('30d')
+  const [customFrom, setCustomFrom] = useState(() => daysAgo(29))
+  const [customTo, setCustomTo] = useState(() => ymdOf(new Date()))
+
+  const range = useMemo(
+    () => rangeForPeriod(period, customFrom, customTo),
+    [period, customFrom, customTo],
+  )
+  const salesQuery = useQuery(adminSalesOptions(range.from, range.to))
+  const sales = salesQuery.data
+
   const canvasRef = useRef<HTMLCanvasElement | null>(null)
   const chartRef = useRef<Chart | null>(null)
 
   useEffect(() => {
-    if (!data || !canvasRef.current) return
+    if (!sales || !canvasRef.current) return
+    // Tick sumbu-x disesuaikan lebar canvas: di layar sempit label tanggal
+    // dipaksa muat (dulu: "03/1007/1011/10…" menumpuk jadi tidak terbaca).
+    // Ukur dari container .admin-chart: clientWidth canvas sendiri masih 300
+    // (default bawaan) sebelum Chart.js menginisialisasi.
+    const canvasWidth =
+      canvasRef.current.parentElement?.clientWidth ??
+      canvasRef.current.clientWidth
+    const xTickFont = { size: canvasWidth < 360 ? 10 : 12 }
+    const maxXTicks = Math.min(8, Math.max(3, Math.floor(canvasWidth / 68)))
     chartRef.current?.destroy()
     chartRef.current = new Chart(canvasRef.current, {
       type: 'line',
       data: {
-        labels: data.sales30d.map(
-          (s) => s.date.slice(8) + '/' + s.date.slice(5, 7),
-        ),
+        labels: sales.points.map(chartLabelOf),
         datasets: [
           {
             label: 'Omzet (Rp)',
-            data: data.sales30d.map((s) => s.total),
+            data: sales.points.map((s) => s.total),
             borderColor: '#0a0a0a',
             backgroundColor: 'rgba(10, 10, 10, 0.05)',
             fill: true,
@@ -122,9 +193,10 @@ function OverviewPage() {
             border: { color: '#e7e9ee' },
             ticks: {
               color: '#6f7680',
-              maxTicksLimit: 8,
+              maxTicksLimit: maxXTicks,
               autoSkip: true,
               maxRotation: 0,
+              font: xTickFont,
             },
           },
           y: {
@@ -144,15 +216,23 @@ function OverviewPage() {
       chartRef.current?.destroy()
       chartRef.current = null
     }
-  }, [data])
+  }, [sales])
 
   if (!data) return null
 
-  const revenue30d = data.sales30d.reduce((sum, day) => sum + day.total, 0)
+  const firstName = me?.name.trim().split(/\s+/)[0] ?? 'Admin'
+  const periodTitle =
+    period === 'today'
+      ? 'Pendapatan hari ini'
+      : period === '7d'
+        ? 'Pendapatan 7 hari'
+        : period === '30d'
+          ? 'Pendapatan 30 hari'
+          : `Pendapatan ${formatDate(range.from)} – ${formatDate(range.to)}`
 
   return (
     <AdminPage
-      title="Overview"
+      title={`Halo, ${firstName}`}
       description="Ringkasan operasional Tiba Tiba Camping hari ini."
     >
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
@@ -185,13 +265,58 @@ function OverviewPage() {
       <div className="grid grid-cols-1 items-start gap-3 xl:grid-cols-12">
         <div className="grid grid-cols-1 gap-3 xl:col-span-8">
           <AdminCard
-            title="Penjualan 30 hari"
+            title={periodTitle}
             actions={
-              <span className="admin-panel-meta">
-                Total {rupiah(revenue30d)}
-              </span>
+              <>
+                <span className="admin-panel-meta">
+                  {salesQuery.isLoading
+                    ? 'Memuat…'
+                    : `Total ${rupiah(sales?.total ?? 0)}`}
+                </span>
+                <div
+                  className="toggle-group toggle-group--sm"
+                  role="group"
+                  aria-label="Periode pendapatan"
+                >
+                  {PERIODS.map((option) => (
+                    <button
+                      key={option.id}
+                      type="button"
+                      className="toggle"
+                      aria-pressed={period === option.id}
+                      onClick={() => setPeriod(option.id)}
+                    >
+                      {option.label}
+                    </button>
+                  ))}
+                </div>
+              </>
             }
           >
+            {period === 'custom' ? (
+              <div className="flex flex-wrap items-end gap-3">
+                <label className="flex min-w-32 flex-1 flex-col gap-1 text-xs text-muted-foreground">
+                  Dari
+                  <input
+                    type="date"
+                    className="input input--sm"
+                    value={customFrom}
+                    max={customTo}
+                    onChange={(event) => setCustomFrom(event.target.value)}
+                  />
+                </label>
+                <label className="flex min-w-32 flex-1 flex-col gap-1 text-xs text-muted-foreground">
+                  Sampai
+                  <input
+                    type="date"
+                    className="input input--sm"
+                    value={customTo}
+                    min={customFrom}
+                    onChange={(event) => setCustomTo(event.target.value)}
+                  />
+                </label>
+              </div>
+            ) : null}
             <div className="admin-chart">
               <canvas ref={canvasRef} />
             </div>
@@ -224,7 +349,12 @@ function OverviewPage() {
                   <>
                     <th scope="col">Kode</th>
                     <th scope="col">Pelanggan</th>
-                    <th scope="col">Tipe</th>
+                    {/* Tipe rela dikorbankan di layar sempit: sel Status/Total
+                        muat penuh dalam kartu (dulu badge "Sedang Disewa"
+                        terpotong keluar tepi kartu). */}
+                    <th scope="col" className="hidden md:table-cell">
+                      Tipe
+                    </th>
                     <th scope="col">Status</th>
                     <th scope="col" className="text-right">
                       Total
@@ -244,11 +374,13 @@ function OverviewPage() {
                       </Link>
                     </th>
                     <td>{customerLabel(order.customer, order.customerName)}</td>
-                    <td>{ORDER_TYPE_LABEL[order.type] ?? order.type}</td>
+                    <td className="hidden md:table-cell">
+                      {ORDER_TYPE_LABEL[order.type] ?? order.type}
+                    </td>
                     <td>
                       <OrderStatusBadge status={order.status} />
                     </td>
-                    <td className="text-right font-semibold">
+                    <td className="whitespace-nowrap text-right font-semibold">
                       {rupiah(order.grandTotal)}
                     </td>
                   </tr>
@@ -347,9 +479,12 @@ function OverviewPage() {
  * konten asli supaya peralihan ke data tidak menggeser layout.
  */
 function OverviewSkeleton() {
+  const { data: me } = useQuery(meOptions)
+  const firstName = me?.name.trim().split(/\s+/)[0] ?? 'Admin'
+
   return (
     <AdminPage
-      title="Overview"
+      title={`Halo, ${firstName}`}
       description="Ringkasan operasional Tiba Tiba Camping hari ini."
     >
       <p className="sr-only" role="status">
@@ -378,7 +513,18 @@ function OverviewSkeleton() {
         aria-hidden="true"
       >
         <div className="grid grid-cols-1 gap-3 xl:col-span-8">
-          <AdminCard title="Penjualan 30 hari">
+          <AdminCard
+            title="Pendapatan 30 hari"
+            actions={
+              <div className="toggle-group toggle-group--sm" aria-hidden="true">
+                {PERIODS.map((option) => (
+                  <span key={option.id} className="toggle">
+                    {option.label}
+                  </span>
+                ))}
+              </div>
+            }
+          >
             <div className="admin-chart">
               <div className="size-full min-h-[220px] animate-pulse rounded bg-border/60" />
             </div>
