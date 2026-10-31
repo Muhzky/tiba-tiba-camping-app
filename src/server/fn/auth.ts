@@ -6,6 +6,7 @@ import {
 import { queryOptions } from '@tanstack/react-query'
 import { auth } from '#/lib/auth'
 import { queryKeys } from '#/lib/query-keys'
+import { toSessionUser } from '#/lib/session-user'
 
 export type SessionUser = {
   id: string
@@ -21,26 +22,7 @@ export const getSessionUser = createServerFn({ method: 'GET' }).handler(
   async (): Promise<SessionUser | null> => {
     const session = await auth.api.getSession({ headers: getRequestHeaders() })
     if (!session) return null
-    const user: {
-      id: string
-      name: string
-      email: string
-      phone?: string | null
-      image?: string | null
-      role?: string
-      isActive?: boolean
-    } = session.user
-    const isActive = user.isActive !== false
-    if (!isActive) return null
-    return {
-      id: user.id,
-      name: user.name,
-      email: user.email,
-      phone: user.phone ?? null,
-      image: user.image ?? null,
-      role: (user.role ?? 'customer') as SessionUser['role'],
-      isActive,
-    }
+    return toSessionUser(session.user)
   },
 )
 

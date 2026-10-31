@@ -3,6 +3,7 @@ import {
   Link,
   redirect,
   useNavigate,
+  useRouter,
 } from '@tanstack/react-router'
 import { useForm } from '@tanstack/react-form'
 import { useQueryClient } from '@tanstack/react-query'
@@ -12,6 +13,13 @@ import { toast } from 'sonner'
 import { z } from 'zod'
 import { authClient } from '#/lib/auth-client'
 import { queryKeys } from '#/lib/query-keys'
+import { isStaffRole, postLoginTarget } from '#/lib/roles'
+import { toSessionUser } from '#/lib/session-user'
+import {
+  layoutStylesheetHref,
+  warmLayoutStylesheet,
+} from '#/lib/use-layout-stylesheet'
+import { adminOverviewOptions } from '#/server/fn/admin'
 import { meOptions } from '#/server/fn/auth'
 import { AuthField, PasswordField } from '#/components/site/AuthField'
 import { AuthShell } from '#/components/site/AuthShell'
@@ -20,11 +28,24 @@ import { Label } from '#/components/ui/label'
 
 export const Route = createFileRoute('/(public)/masuk')({
   validateSearch: z.object({ redirect: z.string().optional() }),
-  head: () => ({ meta: [{ title: 'Masuk — Tiba Tiba Camping' }] }),
+  // CSS admin adalah compile unit terpisah dan, tanpa dipanaskan, baru diminta
+  // setelah dashboard dirender — panel sempat tampil tanpa gaya.
+  // `media="not all"`: file ikut diunduh & diparse selagi user mengisi form,
+  // tapi aturannya tidak berlaku sampai rute /admin aktif.
+  head: () => ({
+    meta: [{ title: 'Masuk — Tiba Tiba Camping' }],
+    links: [
+      {
+        rel: 'stylesheet',
+        href: layoutStylesheetHref('admin'),
+        media: 'not all',
+        'data-layout-style': 'admin',
+      },
+    ],
+  }),
   loader: async ({ context }) => {
     const user = await context.queryClient.ensureQueryData(meOptions)
-    if (user)
-      throw redirect({ to: user.role === 'customer' ? '/akun' : '/admin' })
+    if (user) throw redirect({ to: postLoginTarget(user.role) })
   },
   component: LoginPage,
 })
@@ -32,6 +53,7 @@ export const Route = createFileRoute('/(public)/masuk')({
 function LoginPage() {
   const queryClient = useQueryClient()
   const navigate = useNavigate()
+  const router = useRouter()
   const search = Route.useSearch()
   const [serverError, setServerError] = useState<string | null>(null)
 
@@ -39,19 +61,40 @@ function LoginPage() {
     defaultValues: { email: '', password: '' },
     onSubmit: async ({ value }) => {
       setServerError(null)
-      const { error } = await authClient.signIn.email(value)
+      const { data: signIn, error } = await authClient.signIn.email(value)
       if (error) {
         setServerError(error.message ?? 'Email atau password salah.')
         return
       }
-      await queryClient.invalidateQueries({ queryKey: meOptions.queryKey })
       // Hasil "Paling cocok" dan rekomendasi kini memakai profil akun ini.
-      await queryClient.invalidateQueries({ queryKey: queryKeys.products.all() })
+      // Jangan ditunggu: navigasi ke dashboard tidak boleh tertahan refetch katalog.
+      void queryClient.invalidateQueries({
+        queryKey: queryKeys.products.all(),
+      })
+      // Respons sign-in sudah membawa user lengkap: tulis langsung ke cache supaya
+      // guard rute admin dan Navbar tidak menunggu round trip getSessionUser.
+      const freshUser = toSessionUser(signIn.user)
+      if (freshUser) queryClient.setQueryData(meOptions.queryKey, freshUser)
+      const me = freshUser ?? (await queryClient.fetchQuery(meOptions))
       // Arahkan admin/owner ke panel admin, customer ke akun (kecuali ada ?redirect=).
-      const me = await queryClient.fetchQuery(meOptions)
-      const fallback = me && me.role !== 'customer' ? '/admin' : '/akun'
+      const target = postLoginTarget(me?.role, search.redirect)
+      // Staff: ambil ringkasan dashboard sekarang juga, berbarengan dengan
+      // pengunduhan chunk admin. Loader overview akan memakai promise yang sama,
+      // jadi skeleton hanya tampil selama chunk admin dimuat — tidak ditambah
+      // round trip data setelahnya.
+      if (isStaffRole(me?.role)) {
+        void queryClient.prefetchQuery(adminOverviewOptions)
+        // Biasanya sudah selesai sejak halaman login dibuka (link preload di
+        // atas). Kalau belum, tahan navigasi sebentar di balik status
+        // "Memproses…" daripada sempat menampilkan dashboard tanpa CSS.
+        await warmLayoutStylesheet('admin')
+      }
+      // Mulai unduh chunk + data halaman tujuan selagi navigasi berjalan.
+      if (target === '/admin' || target === '/akun') {
+        void router.preloadRoute({ to: target }).catch(() => undefined)
+      }
       toast.success('Selamat datang kembali!')
-      await navigate({ to: search.redirect ?? fallback })
+      await navigate({ to: target })
     },
   })
 
@@ -160,13 +203,7 @@ function LoginPage() {
           className="mt-1 h-11 w-full rounded-full text-sm font-semibold"
           disabled={form.state.isSubmitting}
         >
-          {form.state.isSubmitting ? (
-            'Memproses…'
-          ) : (
-            <>
-              Masuk
-            </>
-          )}
+          {form.state.isSubmitting ? 'Memproses…' : <>Masuk</>}
         </Button>
       </form>
 

@@ -11,3 +11,17 @@ export function isStaffRole(
 export function isAdminModeError(error: unknown): boolean {
   return error instanceof Error && error.message.includes('ADMIN_MODE')
 }
+
+/**
+ * Tujuan setelah login/daftar. Staff selalu ke panel admin — `?redirect=` ke
+ * halaman pelanggan diabaikan, kecuali deep link yang memang di area /admin.
+ */
+export function postLoginTarget(
+  role: string | null | undefined,
+  redirect?: string | null,
+): string {
+  if (isStaffRole(role)) {
+    return redirect?.startsWith('/admin') ? redirect : '/admin'
+  }
+  return redirect ?? '/akun'
+}

@@ -10,6 +10,7 @@ import {
   Settings2,
 } from 'lucide-react'
 import { useLogout } from '#/lib/use-logout'
+import { isStaffRole } from '#/lib/roles'
 import { useSiteSettings } from '#/lib/use-site-settings'
 import { meOptions } from '#/server/fn/auth'
 import { Button } from '#/components/ui/button'
@@ -27,6 +28,8 @@ export const Route = createFileRoute('/(public)/akun')({
     if (!user) {
       throw redirect({ to: '/masuk', search: { redirect: location.href } })
     }
+    // Admin/owner punya panel sendiri; jangan biarkan mereka memakai halaman akun pelanggan.
+    if (isStaffRole(user.role)) throw redirect({ to: '/admin' })
     return { user }
   },
   component: AkunLayout,

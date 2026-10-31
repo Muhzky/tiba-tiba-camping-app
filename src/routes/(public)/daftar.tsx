@@ -3,6 +3,7 @@ import {
   Link,
   redirect,
   useNavigate,
+  useRouter,
 } from '@tanstack/react-router'
 import { useForm } from '@tanstack/react-form'
 import { useQueryClient } from '@tanstack/react-query'
@@ -12,6 +13,8 @@ import { toast } from 'sonner'
 import { z } from 'zod'
 import { authClient } from '#/lib/auth-client'
 import { queryKeys } from '#/lib/query-keys'
+import { postLoginTarget } from '#/lib/roles'
+import { toSessionUser } from '#/lib/session-user'
 import { meOptions } from '#/server/fn/auth'
 import { AuthField, PasswordField } from '#/components/site/AuthField'
 import { AuthShell } from '#/components/site/AuthShell'
@@ -22,7 +25,7 @@ export const Route = createFileRoute('/(public)/daftar')({
   head: () => ({ meta: [{ title: 'Daftar — Tiba Tiba Camping' }] }),
   loader: async ({ context }) => {
     const user = await context.queryClient.ensureQueryData(meOptions)
-    if (user) throw redirect({ to: '/akun' })
+    if (user) throw redirect({ to: postLoginTarget(user.role) })
   },
   component: RegisterPage,
 })
@@ -30,13 +33,14 @@ export const Route = createFileRoute('/(public)/daftar')({
 function RegisterPage() {
   const queryClient = useQueryClient()
   const navigate = useNavigate()
+  const router = useRouter()
   const [serverError, setServerError] = useState<string | null>(null)
 
   const form = useForm({
     defaultValues: { name: '', email: '', password: '', confirm: '' },
     onSubmit: async ({ value }) => {
       setServerError(null)
-      const { error } = await authClient.signUp.email({
+      const { data: signUp, error } = await authClient.signUp.email({
         name: value.name,
         email: value.email,
         password: value.password,
@@ -45,11 +49,21 @@ function RegisterPage() {
         setServerError(error.message ?? 'Pendaftaran gagal. Coba lagi.')
         return
       }
-      await queryClient.invalidateQueries({ queryKey: meOptions.queryKey })
       // Rekomendasi katalog kini memakai profil akun baru.
-      await queryClient.invalidateQueries({ queryKey: queryKeys.products.all() })
+      // Jangan ditunggu: navigasi ke akun tidak boleh tertahan refetch katalog.
+      void queryClient.invalidateQueries({
+        queryKey: queryKeys.products.all(),
+      })
+      // Sesi baru langsung masuk cache; tidak perlu menunggu getSessionUser.
+      const freshUser = toSessionUser(signUp.user)
+      if (freshUser) queryClient.setQueryData(meOptions.queryKey, freshUser)
+      const me = freshUser ?? (await queryClient.fetchQuery(meOptions))
+      const target = postLoginTarget(me?.role)
+      if (target === '/admin' || target === '/akun') {
+        void router.preloadRoute({ to: target }).catch(() => undefined)
+      }
       toast.success('Akun dibuat. Selamat datang di Tiba Tiba Camping!')
-      await navigate({ to: '/akun' })
+      await navigate({ to: target })
     },
   })
 
@@ -227,13 +241,7 @@ function RegisterPage() {
           className="mt-1 h-11 w-full rounded-full text-sm font-semibold"
           disabled={form.state.isSubmitting}
         >
-          {form.state.isSubmitting ? (
-            'Membuat akun…'
-          ) : (
-            <>
-              Daftar
-            </>
-          )}
+          {form.state.isSubmitting ? 'Membuat akun…' : <>Daftar</>}
         </Button>
       </form>
 
