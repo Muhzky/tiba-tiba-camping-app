@@ -20,7 +20,7 @@ const createdAt = timestamp('created_at', { withTimezone: true }).notNull().defa
 const updatedAt = timestamp('updated_at', { withTimezone: true }).notNull().defaultNow()
 
 // ── Enums ────────────────────────────────────────────────────────────────────
-export const userRoleEnum = pgEnum('user_role', ['customer', 'admin', 'owner'])
+export const userRoleEnum = pgEnum('user_role', ['customer', 'admin'])
 export const preferModeEnum = pgEnum('prefer_mode', ['buy', 'rent', 'any'])
 export const transactionModeEnum = pgEnum('transaction_mode', ['buy', 'rent', 'preorder'])
 export const orderChannelEnum = pgEnum('order_channel', ['web', 'pos'])

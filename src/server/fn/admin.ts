@@ -42,7 +42,7 @@ import { rentalDeposit, rentalDays } from '#/lib/order-totals'
 import { customerLabel } from '#/lib/order-status'
 import { orderCode, pickRentUnits } from '#/server/fn/checkout'
 import { restockBuyOrder } from '#/server/fn/inventory'
-import { rupiah, slugify } from '#/lib/format'
+import { rupiah, slugify, variantSku } from '#/lib/format'
 import { getSessionUser } from '#/server/fn/auth'
 import { rebuildRecommender } from '#/server/recommender/similarity'
 import { buildVectorSpace } from '#/server/recommender/vectorize'
@@ -52,15 +52,9 @@ import { queryKeys } from '#/lib/query-keys'
 
 export async function requireAdmin(): Promise<SessionUser> {
   const user = await getSessionUser()
-  if (!user || (user.role !== 'admin' && user.role !== 'owner')) {
+  if (!user || user.role !== 'admin') {
     throw new Error('AKSES_DITOLAK')
   }
-  return user
-}
-
-export async function requireOwner(): Promise<SessionUser> {
-  const user = await requireAdmin()
-  if (user.role !== 'owner') throw new Error('AKSES_DITOLAK')
   return user
 }
 
@@ -476,8 +470,6 @@ export const setUserActive = createServerFn({ method: 'POST' })
       .where(eq(users.id, data.userId))
       .limit(1)
     if (!target) throw new Error('USER_TIDAK_DITEMUKAN')
-    if (target.role === 'owner' && actor.role !== 'owner')
-      throw new Error('AKSES_DITOLAK')
     await db
       .update(users)
       .set({ isActive: data.isActive })
@@ -493,7 +485,7 @@ export const setUserActive = createServerFn({ method: 'POST' })
 
 export const setUserRoleSchema = z.object({
   userId: z.uuid(),
-  role: z.enum(['customer', 'admin', 'owner']),
+  role: z.enum(['customer', 'admin']),
 })
 
 export const setUserRole = createServerFn({ method: 'POST' })
@@ -501,7 +493,7 @@ export const setUserRole = createServerFn({ method: 'POST' })
     setUserRoleSchema.parse(input),
   )
   .handler(async ({ data }) => {
-    const actor = await requireOwner()
+    const actor = await requireAdmin()
     if (actor.id === data.userId)
       throw new Error('TIDAK_BISA_UBAH_DIRI_SENDIRI')
     await db
@@ -773,7 +765,7 @@ export const saveProduct = createServerFn({ method: 'POST' })
       .returning({ id: products.id })
     await db.insert(productVariants).values({
       productId: created.id,
-      sku: `${slug}-default`,
+      sku: variantSku(slug, 'default'),
       stock: 0,
     })
     await audit(actor.id, 'product.create', 'product', created.id)
@@ -792,7 +784,13 @@ export const saveVariantSchema = z.object({
     .optional(),
   size: z.string().trim().max(40).optional(),
   stock: z.int().min(0).default(0),
-  salePriceOverride: z.int().positive().nullable().default(null),
+  // 0 = tanpa override (disimpan sebagai null).
+  salePriceOverride: z
+    .int()
+    .min(0)
+    .nullable()
+    .default(null)
+    .transform((v) => (v === 0 ? null : v)),
 })
 
 export const saveVariant = createServerFn({ method: 'POST' })
@@ -905,7 +903,7 @@ export const duplicateProduct = createServerFn({ method: 'POST' })
       await db.insert(productVariants).values(
         srcVariants.map((v) => ({
           productId: newId,
-          sku: `${slug}-${v.sku.slice(-8)}`,
+          sku: variantSku(slug, v.sku.slice(-8)),
           colorName: v.colorName,
           colorHex: v.colorHex,
           size: v.size,

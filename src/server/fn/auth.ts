@@ -14,7 +14,7 @@ export type SessionUser = {
   email: string
   phone: string | null
   image: string | null
-  role: 'customer' | 'admin' | 'owner'
+  role: 'customer' | 'admin'
   isActive: boolean
 }
 

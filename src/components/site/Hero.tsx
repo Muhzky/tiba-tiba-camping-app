@@ -1,5 +1,4 @@
 import { Link } from '@tanstack/react-router'
-import { motion, useReducedMotion, useScroll, useTransform } from 'motion/react'
 import { Button } from '#/components/ui/button'
 
 const socials = [
@@ -11,20 +10,20 @@ const socials = [
 const avatars = ['#0A0A0A', '#457AA0', '#6B7280', '#E11D1D']
 
 export function Hero() {
-  const reduced = useReducedMotion()
-  const { scrollY } = useScroll()
-  const parallaxY = useTransform(scrollY, [0, 700], [0, 90])
-
   return (
     <section className="relative flex min-h-svh items-center overflow-hidden supports-[height:100dvh]:min-h-dvh">
-      <motion.img
-        src="/images/hero-v1.jpeg"
-        alt=""
-        aria-hidden="true"
-        fetchPriority="high"
-        className="hero-fade absolute inset-x-0 -top-[6%] h-[112%] w-full object-cover"
-        style={reduced ? undefined : { y: parallaxY }}
-      />
+      {/* Parallax pakai CSS scroll-driven (bukan state JS) agar foto sudah di
+          posisi akhir saat paint pertama: refresh di tengah hero tidak lagi
+          menampilkan foto melompat setelah hydration. */}
+      <div className="hero-parallax absolute inset-x-0 -top-[6%] h-[112%]">
+        <img
+          src="/images/hero-v1.jpeg"
+          alt=""
+          aria-hidden="true"
+          fetchPriority="high"
+          className="hero-fade h-full w-full object-cover"
+        />
+      </div>
       <div className="absolute inset-0 bg-gradient-to-r from-black/70 via-black/35 to-transparent" />
       <div className="absolute inset-x-0 bottom-0 h-44 bg-gradient-to-t from-black/50 via-black/15 to-transparent" />
 

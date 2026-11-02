@@ -28,7 +28,7 @@ export const Route = createFileRoute('/(public)/akun')({
     if (!user) {
       throw redirect({ to: '/masuk', search: { redirect: location.href } })
     }
-    // Admin/owner punya panel sendiri; jangan biarkan mereka memakai halaman akun pelanggan.
+    // Admin punya panel sendiri; jangan biarkan mereka memakai halaman akun pelanggan.
     if (isStaffRole(user.role)) throw redirect({ to: '/admin' })
     return { user }
   },

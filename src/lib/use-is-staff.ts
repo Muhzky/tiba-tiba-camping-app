@@ -3,7 +3,7 @@ import { meOptions } from '#/server/fn/auth'
 import { isStaffRole } from './roles'
 
 /**
- * Deteksi admin/owner dari sesi aktif. Dipakai halaman publik untuk
+ * Deteksi admin dari sesi aktif. Dipakai halaman publik untuk
  * menyembunyikan alur belanja pelanggan dan menampilkan dialog mode admin.
  */
 export function useIsStaff() {

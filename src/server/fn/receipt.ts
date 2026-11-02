@@ -67,7 +67,7 @@ export const getReceipt = createServerFn({ method: 'GET' })
       .limit(1)
 
     if (!row) throw new Error('ORDER_TIDAK_DITEMUKAN')
-    const isAdmin = user.role === 'admin' || user.role === 'owner'
+    const isAdmin = user.role === 'admin'
     if (!isAdmin && row.order.userId !== user.id) throw new Error('AKSES_DITOLAK')
 
     const items = await db

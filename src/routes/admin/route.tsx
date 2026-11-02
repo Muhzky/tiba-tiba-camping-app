@@ -342,7 +342,7 @@ function AdminLayout() {
                     </p>
                     <div className="px-3 pb-1">
                       <StatusBadge
-                        tone={user.role === 'owner' ? 'primary' : 'neutral'}
+                        tone="neutral"
                         soft={false}
                       >
                         {user.role}

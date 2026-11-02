@@ -188,13 +188,6 @@ async function seed() {
     .insert(users)
     .values([
       {
-        name: 'Owner Tiba Tiba',
-        email: 'owner@tibatibacamping.test',
-        passwordHash: password,
-        role: 'owner',
-        emailVerified: true,
-      },
-      {
         name: 'Admin Operasional',
         email: 'admin@tibatibacamping.test',
         passwordHash: password,
@@ -212,7 +205,6 @@ async function seed() {
     .onConflictDoNothing()
 
   const demoEmails = [
-    'owner@tibatibacamping.test',
     'admin@tibatibacamping.test',
     'budi@tibatibacamping.test',
   ]
@@ -327,7 +319,7 @@ async function seed() {
   }
 
   const counts = await db.select().from(products)
-  console.log(`Seed selesai: ${counts.length} produk, akun demo: owner/admin/budi@tibatibacamping.test (password123)`)
+  console.log(`Seed selesai: ${counts.length} produk, akun demo: admin/budi@tibatibacamping.test (password123)`)
 }
 
 seed()

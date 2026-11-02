@@ -29,7 +29,6 @@ export const Route = createFileRoute('/admin/pengguna/')({
 const ROLE_LABEL: Record<string, string> = {
   customer: 'Pelanggan',
   admin: 'Admin',
-  owner: 'Owner',
 }
 
 function PenggunaPage() {
@@ -47,7 +46,7 @@ function PenggunaPage() {
   const roleFn = useServerFn(setUserRole)
   const resetFn = useServerFn(resetUserPassword)
 
-  const isOwner = me?.role === 'owner'
+  const isAdmin = me?.role === 'admin'
   const invalidate = async () => {
     await queryClient.invalidateQueries({ queryKey: ['admin', 'users'] })
   }
@@ -125,17 +124,16 @@ function PenggunaPage() {
                   className="select w-32"
                   value={u.role}
                   aria-label={`Peran ${u.name}`}
-                  disabled={busy || !isOwner || me.id === u.id}
+                  disabled={busy || !isAdmin || me.id === u.id}
                   onChange={(e) =>
                     void run(
-                      () => roleFn({ data: { userId: u.id, role: e.target.value as 'customer' | 'admin' | 'owner' } }),
+                      () => roleFn({ data: { userId: u.id, role: e.target.value as 'customer' | 'admin' } }),
                       `Peran ${u.name} → ${ROLE_LABEL[e.target.value]}`,
                     )
                   }
                 >
                   <option value="customer">{ROLE_LABEL.customer}</option>
                   <option value="admin">{ROLE_LABEL.admin}</option>
-                  <option value="owner">{ROLE_LABEL.owner}</option>
                 </select>
               </td>
               <td>

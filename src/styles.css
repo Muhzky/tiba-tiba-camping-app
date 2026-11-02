@@ -103,6 +103,28 @@
   animation: hero-fade 1s cubic-bezier(0.22, 1, 0.36, 1) backwards;
 }
 
+/* Parallax hero: digerakkan timeline scroll, jadi posisi foto sudah benar sejak
+ * paint pertama (tanpa menunggu hydration seperti versi berbasis JS).
+ * Tanpa dukungan `scroll()` / saat reduced-motion, foto cukup diam. */
+@keyframes hero-parallax {
+  from {
+    transform: translateY(0);
+  }
+  to {
+    transform: translateY(90px);
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  @supports (animation-timeline: scroll()) {
+    .hero-parallax {
+      animation: hero-parallax linear both;
+      animation-timeline: scroll(root block);
+      animation-range: 0px 700px;
+    }
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .hero-in,
   .hero-fade {

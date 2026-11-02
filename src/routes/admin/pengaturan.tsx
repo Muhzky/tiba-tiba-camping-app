@@ -103,9 +103,7 @@ function ProfileCard({ user }: { user: SessionUser }) {
     <AdminCard
       title="Profil admin"
       actions={
-        <span className="text-xs text-muted-foreground">
-          {user.role === 'owner' ? 'Owner' : 'Admin'}
-        </span>
+        <span className="text-xs text-muted-foreground">Admin</span>
       }
     >
       <form

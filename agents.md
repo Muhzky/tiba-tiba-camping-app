@@ -175,10 +175,10 @@ Stisla v3 sudah **token-based** (bukan Bootstrap): tema & komponen dikompilasi d
 | **Overview** | Kartu ringkas (omzet hari ini/bulan, jumlah order, sewa aktif, PO menunggu, stok menipis), grafik penjualan 30 hari, tabel order terbaru, produk terlaris |
 | **Kelola Produk** | CRUD produk & varian, harga jual, harga sewa/hari, stok, mode PO, upload gambar ke R2, aktif/nonaktif, atur atribut produk, duplikat produk, import CSV (v1.1). Deposit sewa tidak diisi per produk — dihitung 50% dari total sewa saat order |
 | **Transaksi** | Daftar semua transaksi (TanStack Table: filter status/tipe/tanggal, search, export CSV). Detail order + timeline status. Aksi: konfirmasi, proses, kirim (resi), selesai; untuk sewa: serah-terima, pengembalian, cek kondisi, hitung denda, kembalikan deposit, **cetak struk A4/thermal**. **Order manual/POS kasir** (walk-in): pilih produk, tipe beli/sewa, bayar tunai/QRIS |
-| **Akun User** | Daftar user, detail, riwayat order, nonaktifkan/aktifkan, reset password, ubah role (super-admin saja) |
+| **Akun User** | Daftar user, detail, riwayat order, nonaktifkan/aktifkan, reset password, ubah role (customer/admin) |
 | **Atribut & Kamus** | Atribut produk (nama, tipe, nilai, bobot rekomendasi) dan **kamus** (sinonim/tag/normalisasi istilah, stopword) — lihat 6.4 |
 
-Role admin: `admin` (operasional) dan `owner` (semua akses + kelola role). Semua aksi sensitif dicatat di `audit_logs`.
+Role: `customer` dan `admin` (operasional penuh, termasuk mengelola pengguna). Semua aksi sensitif dicatat di `audit_logs`.
 
 ---
 
@@ -287,7 +287,7 @@ Vektor profil = rata-rata berbobot dari vektor produk yang berinteraksi + prefer
 Gunakan `uuid` (UUIDv7 bila tersedia) sebagai PK, `timestamptz` untuk waktu, uang dalam **integer rupiah** (bukan float).
 
 ### Identitas
-- `users` (id, name, email unique, phone, password_hash / provider, role enum[`customer`,`admin`,`owner`], is_active, created_at)
+- `users` (id, name, email unique, phone, password_hash / provider, role enum[`customer`,`admin`], is_active, created_at)
 - `sessions` / `accounts` (sesuai library auth)
 - `addresses` (id, user_id, label, recipient, phone, street, city, province, postal_code, is_default)
 - `user_preferences` (user_id PK, categories text[], budget_min, budget_max, party_size, conditions text[], style text[], prefer_mode enum[`buy`,`rent`,`any`], updated_at)

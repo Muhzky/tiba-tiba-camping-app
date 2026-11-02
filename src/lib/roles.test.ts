@@ -2,9 +2,8 @@ import { describe, expect, it } from 'vitest'
 import { isAdminModeError, isStaffRole, postLoginTarget } from './roles'
 
 describe('isStaffRole', () => {
-  it('hanya admin dan owner yang dianggap staff', () => {
+  it('hanya admin yang dianggap staff', () => {
     expect(isStaffRole('admin')).toBe(true)
-    expect(isStaffRole('owner')).toBe(true)
     expect(isStaffRole('customer')).toBe(false)
     expect(isStaffRole(null)).toBe(false)
     expect(isStaffRole(undefined)).toBe(false)
@@ -26,15 +25,14 @@ describe('isAdminModeError', () => {
 describe('postLoginTarget', () => {
   it('staff selalu ke /admin, mengabaikan redirect halaman pelanggan', () => {
     expect(postLoginTarget('admin')).toBe('/admin')
-    expect(postLoginTarget('owner')).toBe('/admin')
     expect(postLoginTarget('admin', '/akun')).toBe('/admin')
     expect(postLoginTarget('admin', '/akun/pesanan')).toBe('/admin')
-    expect(postLoginTarget('owner', '/keranjang')).toBe('/admin')
+    expect(postLoginTarget('admin', '/keranjang')).toBe('/admin')
   })
 
   it('staff tetap menghormati deep link di area /admin', () => {
     expect(postLoginTarget('admin', '/admin/pos')).toBe('/admin/pos')
-    expect(postLoginTarget('owner', '/admin/pesanan?status=baru')).toBe(
+    expect(postLoginTarget('admin', '/admin/pesanan?status=baru')).toBe(
       '/admin/pesanan?status=baru',
     )
   })

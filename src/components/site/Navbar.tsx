@@ -165,8 +165,8 @@ export function Navbar() {
   const [isDesktop, setIsDesktop] = useState(false)
   const { user, isStaff } = useIsStaff()
   const userInitial = user?.name.trim().slice(0, 1).toUpperCase() || '?'
-  // Staff (admin/owner) mendapat pintasan balik ke panel admin dari situs publik.
-  const roleLabel = user?.role === 'owner' ? 'Owner' : 'Admin'
+  // Staff (admin) mendapat pintasan balik ke panel admin dari situs publik.
+  const roleLabel = 'Admin'
   // Keranjang pelanggan tidak relevan untuk staff — jangan fetch.
   const { data: cart } = useQuery({ ...cartOptions, enabled: !isStaff })
   const settings = useSiteSettings()

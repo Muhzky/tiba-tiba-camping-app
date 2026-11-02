@@ -4,10 +4,10 @@ import { createRoot, hydrateRoot } from 'react-dom/client'
 import { RouterProvider } from '@tanstack/react-router'
 import { hydrateStart } from '@tanstack/react-start/client'
 
-// The entry mounts the React root once for the whole document, so hot-swapping
-// it would call `hydrateRoot` on an already-hydrated document. Accept the
-// update but reload the page instead, which re-runs hydration from scratch.
-if (import.meta.hot) import.meta.hot.accept(() => window.location.reload())
+// The entry mounts the React root once for the whole document. Accept client
+// entry updates without forcing a full-page reload; the boot guard below keeps
+// HMR from trying to hydrate the document a second time.
+if (import.meta.hot) import.meta.hot.accept()
 
 declare global {
   interface Window {

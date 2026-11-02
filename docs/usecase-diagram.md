@@ -41,20 +41,17 @@ Dokumen ini memetakan **aktor**, **use case**, dan **relasinya** untuk aplikasi 
 | ------------------------------- | --------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | **Guest**                       | Primer                      | Melihat homepage, katalog, detail produk, katalog sewa, mencari/memfilter, newsletter. Keranjang disimpan di cookie `ttc_cart`. Tidak bisa checkout, favorit, atau melihat pesanan. |
 | **Customer**                    | Primer                      | Semua akses Guest, ditambah daftar/masuk, profil, alamat, favorit, preferensi rekomendasi, keranjang, checkout, pembayaran, riwayat pesanan, struk.                                 |
-| **Admin**                       | Primer                      | Seluruh operasional: overview, produk & varian, gambar, transaksi, status order, pengembalian sewa, POS kasir, pengguna, atribut & kamus, pengaturan situs, rekomendasi.            |
-| **Owner**                       | Primer                      | Mewarisi seluruh akses Admin, ditambah **mengubah role pengguna** (termasuk menjadikan admin/owner).                                                                                |
+| **Admin**                       | Primer                      | Seluruh operasional: overview, produk & varian, gambar, transaksi, status order, pengembalian sewa, POS kasir, pengguna (termasuk mengubah role), atribut & kamus, pengaturan situs, rekomendasi.            |
 | **Midtrans**                    | Sekunder (sistem eksternal) | Menerima pembuatan transaksi Snap, mengirim webhook notifikasi pembayaran.                                                                                                          |
 | **Cloudflare R2**               | Sekunder (sistem eksternal) | Menerima upload gambar via presigned PUT URL; menyajikan gambar dari CDN.                                                                                                           |
 | **Scheduler / sistem internal** | Sekunder                    | Menjalankan rebuild vektor rekomendasi (otomatis saat admin menyimpan, atau manual).                                                                                                |
 
-**Generalisasi aktor:** `Customer` mewarisi semua use case `Guest`; `Owner` mewarisi semua use case
-`Admin`. Garis warisan tidak digambar agar diagram tetap terbaca — hubungkan aktor turunan hanya ke
-use case tambahannya.
+**Generalisasi aktor:** `Customer` mewarisi semua use case `Guest`. Garis warisan tidak digambar
+agar diagram tetap terbaca — hubungkan aktor turunan hanya ke use case tambahannya.
 
 **Guard keamanan (bukan use case UI):**
 
-- `requireAdmin()` → hanya `admin` dan `owner`; `requireOwner()` → hanya `owner`
-  (`src/server/fn/admin.ts`).
+- `requireAdmin()` → hanya `admin` (`src/server/fn/admin.ts`).
 - `requireUser()` pada checkout, favorit, alamat, preferensi, pesanan, dan struk.
 - Guard dicek di **server function**, bukan hanya `beforeLoad` route.
 
@@ -67,7 +64,6 @@ flowchart LR
   Guest([Guest]):::actor
   Customer([Customer]):::actor
   Admin([Admin]):::actor
-  Owner([Owner]):::actor
   MT([Midtrans]):::external
   R2([Cloudflare R2]):::external
 
@@ -87,7 +83,6 @@ flowchart LR
   Customer --- M3
   Customer -.-> M5
   Admin --- M4
-  Owner --- M4
   M3 -->|"Snap token dan webhook"| MT
   M4 -->|"upload gambar"| R2
   M4 -.->|"rebuild dan debug"| M5
@@ -194,7 +189,7 @@ flowchart LR
 Catatan:
 
 - Login memakai **Better Auth** (email + password, session cookie httpOnly). Setelah login,
-  admin/owner diarahkan ke `/admin`, customer ke `/akun` (`src/routes/(public)/masuk.tsx`).
+  admin diarahkan ke `/admin`, customer ke `/akun` (`src/routes/(public)/masuk.tsx`).
 - Preferensi rekomendasi: kategori, budget, jumlah orang, kondisi/medan, gaya, dan mode
   beli/sewa/apa saja (`user_preferences`).
 - Favorit bersifat idempoten per `(user, produk)`; toggle juga mencatat event rekomendasi.
@@ -296,7 +291,6 @@ Catatan penting:
 ```mermaid
 flowchart LR
   Admin([Admin]):::actor
-  Owner([Owner]):::actor
   R2([Cloudflare R2]):::external
 
   subgraph ADM["Panel admin Stisla"]
@@ -348,7 +342,7 @@ flowchart LR
   Admin --- ADM19
   Admin --- ADM20
   Admin --- ADM21
-  Owner --- ADM22
+  Admin --- ADM22
 
   ADM02 -.->|«include»| ADM03
   ADM02 -.->|«include»| ADM04
@@ -366,7 +360,7 @@ flowchart LR
 
 Catatan:
 
-- **Owner mewarisi semua use case Admin**; garis ke `ADM-22` adalah tambahan khusus owner.
+- `ADM-22` mengubah role pengguna antara `customer` dan `admin`.
 - `ADM-10` tunduk pada tabel transisi status. Contoh: `pending_payment` hanya boleh ke `paid` atau
   `cancelled`; `processing` boleh ke `shipped`, `ready_pickup`, `completed`, atau `cancelled`;
   status final tidak bisa diubah. Kirim barang **wajib** nomor resi.
@@ -611,7 +605,7 @@ sequenceDiagram
 | ADM-19 | Mengatur pengaturan situs           | Admin | `updateSiteSettings`, `src/routes/admin/pengaturan.tsx`    |
 | ADM-20 | Membangun ulang rekomendasi         | Admin | `rebuildRecommenderNow`, `scheduleRebuild`                 |
 | ADM-21 | Melihat debug vektor dan skor       | Admin | `getRecommenderStats`, `getRecommenderProductDebug`        |
-| ADM-22 | Mengubah role pengguna              | Owner | `setUserRole`, `requireOwner`                              |
+| ADM-22 | Mengubah role pengguna              | Admin | `setUserRole`, `requireAdmin`                              |
 
 ### 10.5 Rekomendasi
 
@@ -648,6 +642,6 @@ sequenceDiagram
    idempoten dan `raw_notification` disimpan untuk audit.
 9. **Struk** hanya bisa diakses pemilik order atau admin; struk belum lunas diberi watermark
    "BELUM DIBAYAR".
-10. **Admin guard ada di server** (`requireAdmin` / `requireOwner`), bukan hanya di UI.
+10. **Admin guard ada di server** (`requireAdmin`), bukan hanya di UI.
 11. **Rekomendasi tidak memakai data user lain** (bukan collaborative filtering); produk yang sudah
     dibeli disaring, hasil didiversifikasi maksimal 3 per kategori.

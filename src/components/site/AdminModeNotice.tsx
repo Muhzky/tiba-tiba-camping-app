@@ -3,7 +3,7 @@ import { ShieldAlert } from 'lucide-react'
 import { Button } from '#/components/ui/button'
 
 /**
- * Halaman penuh untuk rute pelanggan (/keranjang, /checkout) saat admin/owner
+ * Halaman penuh untuk rute pelanggan (/keranjang, /checkout) saat admin
  * membukanya langsung lewat URL.
  */
 export function AdminModeNotice({

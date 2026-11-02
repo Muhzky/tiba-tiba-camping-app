@@ -76,7 +76,7 @@ function LoginPage() {
       const freshUser = toSessionUser(signIn.user)
       if (freshUser) queryClient.setQueryData(meOptions.queryKey, freshUser)
       const me = freshUser ?? (await queryClient.fetchQuery(meOptions))
-      // Arahkan admin/owner ke panel admin, customer ke akun (kecuali ada ?redirect=).
+      // Arahkan admin ke panel admin, customer ke akun (kecuali ada ?redirect=).
       const target = postLoginTarget(me?.role, search.redirect)
       // Staff: ambil ringkasan dashboard sekarang juga, berbarengan dengan
       // pengunduhan chunk admin. Loader overview akan memakai promise yang sama,

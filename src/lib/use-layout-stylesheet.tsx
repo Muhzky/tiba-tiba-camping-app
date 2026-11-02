@@ -4,7 +4,6 @@ import appCss from '#/styles.css?url'
 import adminCss from '#/styles/admin.css?url'
 
 const STYLE_ATTR = 'data-layout-style'
-const WARM_TIMEOUT_MS = 4_000
 
 type Layout = 'public' | 'admin'
 
@@ -99,7 +98,7 @@ function watchLinkLoaded(link: HTMLLinkElement): Promise<void> {
 
     link.addEventListener('load', finish, { once: true })
     link.addEventListener('error', finish, { once: true })
-    window.setTimeout(finish, WARM_TIMEOUT_MS)
+    
   })
 
   linkWatchers.set(link, promise)

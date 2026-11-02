@@ -318,12 +318,7 @@ function AkunHome() {
   // lama saat query `me` baru saja berubah menjadi null.
   if (!user) return null
 
-  const roleLabel =
-    user.role === 'owner'
-      ? 'Owner'
-      : user.role === 'admin'
-        ? 'Admin'
-        : 'Pelanggan'
+  const roleLabel = user.role === 'admin' ? 'Admin' : 'Pelanggan'
   const profileName = profile?.name ?? user.name
   const profileEmail = profile?.email ?? user.email
   const profileImage = showProfileForm ? currentImage : savedImage

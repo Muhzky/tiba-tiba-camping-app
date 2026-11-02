@@ -73,7 +73,7 @@ function ReceiptPage() {
 
   const { order, items, payments, settings, cashier } = data
   const isRent = order.type === 'rent'
-  const isAdmin = user.role === 'admin' || user.role === 'owner'
+  const isAdmin = user.role === 'admin'
   const paid = order.paymentStatus === 'paid'
   const deadline = rentalDeadlineInfo(items.map((item) => item.rentEnd))
   const latestPayment =

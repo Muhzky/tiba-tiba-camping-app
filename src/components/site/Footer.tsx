@@ -1,5 +1,5 @@
 import { Link } from '@tanstack/react-router'
-import { MapPin } from 'lucide-react'
+import { Mail, MapPin, Phone } from 'lucide-react'
 import { Logo } from './Logo'
 import {
   FacebookIcon,
@@ -45,8 +45,8 @@ export function Footer() {
   return (
     <footer id="kontak" className="border-t border-border bg-background">
       <div className="mx-auto max-w-7xl px-4 py-8 md:px-8">
-        <div className="grid gap-10 md:grid-cols-4">
-          <div className="flex flex-col items-start gap-4">
+        <div className="grid gap-x-8 gap-y-10 sm:grid-cols-2 lg:grid-cols-12 lg:gap-x-10">
+          <div className="flex flex-col items-start gap-4 sm:col-span-2 lg:col-span-3">
             <Logo />
             <p className="max-w-xs text-sm leading-relaxed text-muted-foreground">
               {settings.footerDescription}
@@ -80,7 +80,7 @@ export function Footer() {
           </div>
 
           {columns.map((column) => (
-            <nav key={column.title} aria-label={column.title}>
+            <nav key={column.title} aria-label={column.title} className="lg:col-span-2">
               <h3 className="mb-4 text-sm font-semibold uppercase tracking-wide">
                 {column.title}
               </h3>
@@ -99,35 +99,51 @@ export function Footer() {
             </nav>
           ))}
 
-          <div>
+          <div className="lg:col-span-3">
+            <h3 className="mb-4 text-sm font-semibold uppercase tracking-wide">
+              Metode Pembayaran
+            </h3>
+            <img
+              src="/images/payment-option.png"
+              alt="Metode pembayaran: BCA, BNI, BRI, Mandiri, CIMB Niaga, Visa, GoPay, OVO, SeaBank, dan SPayLater"
+              width={666}
+              height={375}
+              loading="lazy"
+              className="h-auto w-full max-w-56"
+            />
+          </div>
+
+          <div className="lg:col-span-2">
             <h3 className="mb-4 text-sm font-semibold uppercase tracking-wide">
               Kontak
             </h3>
-            <ul className="space-y-2.5 text-sm text-muted-foreground">
+            <ul className="space-y-2 text-sm text-muted-foreground">
               {settings.address ? (
                 <li className="flex items-start gap-2">
                   <MapPin
                     className="mt-0.5 size-4 shrink-0"
                     aria-hidden="true"
                   />
-                  <span>{settings.address}</span>
+                  <span className="break-words leading-relaxed">{settings.address}</span>
                 </li>
               ) : null}
               {settings.contactEmail ? (
-                <li>
+                <li className="flex items-start gap-2">
+                  <Mail className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
                   <a
                     href={`mailto:${settings.contactEmail}`}
-                    className="underline-offset-4 transition hover:text-foreground hover:underline"
+                    className="break-words underline-offset-4 transition hover:text-foreground hover:underline"
                   >
                     {settings.contactEmail}
                   </a>
                 </li>
               ) : null}
               {settings.contactPhone ? (
-                <li>
+                <li className="flex items-start gap-2">
+                  <Phone className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
                   <a
                     href={telHref(settings.contactPhone)}
-                    className="underline-offset-4 transition hover:text-foreground hover:underline"
+                    className="break-words underline-offset-4 transition hover:text-foreground hover:underline"
                   >
                     {settings.contactPhone}
                   </a>
@@ -144,7 +160,7 @@ export function Footer() {
           </div>
         </div>
 
-        <div className="mt-14 flex flex-col items-center justify-between gap-3 border-t border-border pt-6 text-xs text-muted-foreground sm:flex-row">
+        <div className="mt-10 flex flex-col items-center justify-between gap-3 border-t border-border pt-6 text-xs text-muted-foreground sm:flex-row">
           <p>
             © {new Date().getFullYear()} Tiba Tiba Camping. Semua hak
             dilindungi.
