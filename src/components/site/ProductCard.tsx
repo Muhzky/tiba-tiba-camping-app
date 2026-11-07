@@ -60,7 +60,7 @@ export function ProductCard({ product, className }: { product: ProductCardData; 
 
         <div className="mt-auto flex items-end justify-between gap-2 pt-2">
           <div>
-            <p className="text-sm font-bold text-sale">{product.priceLabel}</p>
+            <p className="text-sm font-bold text-sale whitespace-nowrap">{product.priceLabel}</p>
             {product.salePriceLabel ? (
               <p className="text-xs text-muted-foreground line-through">{product.salePriceLabel}</p>
             ) : null}

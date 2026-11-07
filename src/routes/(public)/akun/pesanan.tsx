@@ -3,7 +3,7 @@ import { useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useServerFn } from '@tanstack/react-start'
 import { toast } from 'sonner'
-import { Receipt } from 'lucide-react'
+import { Receipt, Truck } from 'lucide-react'
 import { myOrdersOptions } from '#/server/fn/order'
 import { repayOrder } from '#/server/fn/checkout'
 import { syncOrderPayment } from '#/server/fn/midtrans'
@@ -97,15 +97,12 @@ function PesananPage() {
       />
 
       <div
-        className="flex w-fit flex-wrap gap-1 rounded-full border border-border/60 bg-surface/60 p-1"
+        className="flex flex-wrap gap-1 rounded-full border border-border/60 bg-surface/60 p-1"
         role="tablist"
         aria-label="Filter pesanan"
       >
         {TABS.map((item) => {
           const active = tab === item.key
-          const count = orders.filter(
-            (order) => item.key === 'semua' || order.type === item.key,
-          ).length
           return (
             <button
               key={item.key}
@@ -121,16 +118,6 @@ function PesananPage() {
               )}
             >
               {item.label}
-              <span
-                className={cn(
-                  'text-[10px] tabular-nums',
-                  active
-                    ? 'text-primary-foreground/70'
-                    : 'text-muted-foreground/80',
-                )}
-              >
-                {count}
-              </span>
             </button>
           )
         })}
@@ -210,6 +197,22 @@ function PesananPage() {
                         ) : null}
                       </p>
                     </>
+                  ) : null}
+                  {order.status === 'shipped' && order.trackingNo ? (
+                    <div className="mt-1.5 flex flex-wrap items-center gap-2 text-xs">
+                      <span className="flex items-center gap-1.5 text-muted-foreground">
+                        <Truck className="size-4" />
+                        Dikirim – Resi: <span className="font-mono font-semibold">{order.trackingNo}</span>
+                      </span>
+                      <a
+                        href={`https://cekresi.com/${order.trackingNo}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="underline underline-offset-4 hover:text-primary"
+                      >
+                        Lacak Paket
+                      </a>
+                    </div>
                   ) : null}
                 </div>
                 <div className="flex flex-wrap items-center gap-3">

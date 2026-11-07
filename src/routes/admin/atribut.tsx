@@ -133,8 +133,9 @@ function AtributPage() {
     >
       <div className="grid grid-cols-1 items-start gap-4 lg:grid-cols-2">
         <AdminCard
+          className="card--attribute"
           title={
-            <span className="admin-toolbar-title">
+            <span className="page__section-title">
               Atribut produk
               <span className="admin-toolbar-count">{attributes.length}</span>
             </span>
@@ -320,9 +321,9 @@ function AtributPage() {
           </form>
         </AdminCard>
 
-        <AdminCard
+        <AdminCard className="card--dictionary"
           title={
-            <span className="admin-toolbar-title">
+            <span className="page__section-title">
               Kamus pencarian
               {dict ? <span className="admin-toolbar-count">{dict.total}</span> : null}
             </span>
@@ -471,7 +472,7 @@ function AtributPage() {
             </div>
             <button
               type="submit"
-              className={buttonClass({ variant: 'primary' })}
+              className={`${buttonClass({ variant: 'primary' })} mt-4`}
               disabled={busy}
             >
               <Plus aria-hidden="true" />

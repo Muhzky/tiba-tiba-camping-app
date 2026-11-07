@@ -41,6 +41,22 @@ export const MAX_PROFILE_IMAGE_LENGTH = 400_000
 const dataImagePattern =
   /^data:image\/(?:png|jpeg|webp);base64,[a-z0-9+/]+={0,2}$/i
 
+/** URL foto profil: https(s), path lokal, atau data URL inline (fallback bila storage belum ada). */
+export const profileImageField = z
+  .string()
+  .trim()
+  .max(MAX_PROFILE_IMAGE_LENGTH)
+  .refine(
+    (value) =>
+      value === '' ||
+      value.startsWith('/') ||
+      /^https?:\/\//i.test(value) ||
+      dataImagePattern.test(value),
+    'URL foto tidak valid',
+  )
+  .nullish()
+  .transform((value) => value || null)
+
 export const profileSchema = z.object({
   name: z.string().trim().min(2).max(80),
   phone: z
@@ -53,20 +69,7 @@ export const profileSchema = z.object({
     )
     .nullish()
     .transform((value) => value || null),
-  image: z
-    .string()
-    .trim()
-    .max(MAX_PROFILE_IMAGE_LENGTH)
-    .refine(
-      (value) =>
-        value === '' ||
-        value.startsWith('/') ||
-        /^https?:\/\//i.test(value) ||
-        dataImagePattern.test(value),
-      'URL foto tidak valid',
-    )
-    .nullish()
-    .transform((value) => value || null),
+  image: profileImageField,
 })
 
 export type ProfileInput = z.infer<typeof profileSchema>

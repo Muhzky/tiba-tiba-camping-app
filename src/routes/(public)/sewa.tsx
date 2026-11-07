@@ -720,7 +720,7 @@ function RentalCard({ item }: { item: RentalCatalogItem }) {
           loading="lazy"
           className="size-full object-cover transition-transform duration-500 group-hover:scale-105"
         />
-        <span className="absolute left-3 top-3 inline-flex items-center gap-1.5 rounded-full bg-background/90 px-2.5 py-1 text-[11px] font-semibold text-foreground backdrop-blur">
+        <span className="absolute left-3 top-3 inline-flex items-center gap-1 rounded-full bg-background/90 px-2 py-0.5 text-[10px] font-medium text-foreground backdrop-blur">
           <span
             className={cn(
               'size-1.5 rounded-full',
@@ -730,7 +730,7 @@ function RentalCard({ item }: { item: RentalCatalogItem }) {
           />
           {inStock ? `Stok ${item.stock} unit` : 'Stok habis'}
         </span>
-        <span className="absolute bottom-3 left-3 rounded-full bg-foreground/85 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-background backdrop-blur">
+        <span className="absolute bottom-3 left-3 rounded-full bg-foreground/85 px-2 py-0.5 text-[9px] font-medium uppercase tracking-[0.1em] text-background backdrop-blur">
           {item.categoryName}
         </span>
       </Link>
@@ -748,13 +748,13 @@ function RentalCard({ item }: { item: RentalCatalogItem }) {
 
         <div className="mt-auto flex items-end justify-between gap-3 pt-3">
           <div>
-            <p className="text-lg font-semibold text-sale">
+            <p className="text-sm font-medium text-sale whitespace-nowrap">
               {item.rentPerDayLabel}
-              <span className="ml-1 text-xs font-normal text-muted-foreground">
+              <span className="ml-1 text-[10px] font-normal text-muted-foreground">
                 / hari
               </span>
             </p>
-            <p className="mt-1 text-[11px] text-muted-foreground">
+            <p className="text-[9px] text-muted-foreground">
               Deposit 50% dari total sewa
             </p>
           </div>

@@ -8,6 +8,7 @@ import { queryKeys } from '#/lib/query-keys'
 import { siteSettingsDefaults } from '#/lib/site-settings'
 import type { SiteSettingsValues } from '#/lib/site-settings'
 import { audit, requireAdmin } from '#/server/fn/admin'
+import { profileImageField } from '#/server/fn/account'
 
 export type SiteSettings = SiteSettingsValues & { updatedAt: Date | null }
 
@@ -145,6 +146,8 @@ export const adminProfileSchema = z.object({
       (value) => value === '' || phonePattern.test(value),
       'Nomor HP tidak valid',
     ),
+  /** Foto profil admin — aturan yang sama dengan foto profil pelanggan. */
+  image: profileImageField,
 })
 
 export type AdminProfileInput = z.infer<typeof adminProfileSchema>
@@ -176,6 +179,7 @@ export const updateAdminProfile = createServerFn({ method: 'POST' })
         name: data.name,
         email: data.email,
         phone: data.phone === '' ? null : data.phone,
+        image: data.image,
         updatedAt: new Date(),
       })
       .where(eq(users.id, actor.id))
@@ -189,9 +193,13 @@ export const updateAdminProfile = createServerFn({ method: 'POST' })
         isActive: users.isActive,
       })
     if (!row) throw new Error('USER_TIDAK_DITEMUKAN')
+    // Catat perubahan foto sebagai status saja — data URL-nya bisa ratusan KB
+    // dan tidak pantas masuk audit log.
+    const imageChanged = (data.image ?? null) !== actor.image
     await audit(actor.id, 'profile.update', 'user', actor.id, {
       name: data.name,
       email: data.email,
+      ...(imageChanged ? { image: data.image ? 'updated' : 'cleared' } : {}),
     })
     return row
   })

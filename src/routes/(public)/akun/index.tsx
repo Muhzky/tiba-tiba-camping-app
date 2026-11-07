@@ -30,11 +30,8 @@ import {
 } from '#/server/fn/account'
 import { meOptions } from '#/server/fn/auth'
 import { myOrdersOptions } from '#/server/fn/order'
-import {
-  ALLOWED_IMAGE_TYPES,
-  MAX_IMAGE_BYTES,
-  getAvatarUploadUrl,
-} from '#/server/fn/storage'
+import { getAvatarUploadUrl } from '#/server/fn/storage'
+import { avatarFileError, uploadProfileImage } from '#/lib/avatar'
 import { Button } from '#/components/ui/button'
 import { Avatar, AvatarFallback, AvatarImage } from '#/components/ui/avatar'
 import { Input } from '#/components/ui/input'
@@ -76,59 +73,6 @@ function formatDate(value: Date) {
     month: 'short',
     year: 'numeric',
   })
-}
-
-const AVATAR_SIZE = 320
-const AVATAR_QUALITY = 0.85
-
-type PreparedAvatar = {
-  blob: Blob
-  contentType: 'image/jpeg'
-  fileName: string
-  dataUrl: string
-}
-
-/**
- * Crop to a square, downscale and re-encode so avatars stay small enough to
- * upload to R2 — or, when storage isn't configured, to inline as a data URL.
- */
-async function prepareAvatar(file: File): Promise<PreparedAvatar | null> {
-  try {
-    const bitmap = await createImageBitmap(file)
-    try {
-      const canvas = document.createElement('canvas')
-      canvas.width = AVATAR_SIZE
-      canvas.height = AVATAR_SIZE
-      const context = canvas.getContext('2d')
-      if (!context) return null
-      const side = Math.min(bitmap.width, bitmap.height)
-      context.drawImage(
-        bitmap,
-        (bitmap.width - side) / 2,
-        (bitmap.height - side) / 2,
-        side,
-        side,
-        0,
-        0,
-        AVATAR_SIZE,
-        AVATAR_SIZE,
-      )
-      const blob = await new Promise<Blob | null>((resolve) => {
-        canvas.toBlob(resolve, 'image/jpeg', AVATAR_QUALITY)
-      })
-      if (!blob) return null
-      return {
-        blob,
-        contentType: 'image/jpeg',
-        fileName: `${file.name.replace(/\.[^.]+$/, '') || 'avatar'}.jpg`,
-        dataUrl: canvas.toDataURL('image/jpeg', AVATAR_QUALITY),
-      }
-    } finally {
-      bitmap.close()
-    }
-  } catch {
-    return null
-  }
 }
 
 function AkunHome() {
@@ -243,55 +187,15 @@ function AkunHome() {
 
   async function handleAvatarFile(file: File | undefined) {
     if (!file) return
-    if (
-      !ALLOWED_IMAGE_TYPES.includes(
-        file.type as (typeof ALLOWED_IMAGE_TYPES)[number],
-      )
-    ) {
-      toast.error('Format foto harus JPG, PNG, atau WebP.')
-      return
-    }
-    if (file.size > MAX_IMAGE_BYTES) {
-      toast.error('Ukuran foto maksimal 5 MB.')
+    const rejected = avatarFileError(file)
+    if (rejected) {
+      toast.error(rejected)
       return
     }
 
     setAvatarBusy(true)
     try {
-      const prepared = await prepareAvatar(file)
-      const target = await uploadAvatar({
-        data: {
-          fileName: prepared?.fileName ?? file.name,
-          contentType:
-            prepared?.contentType ??
-            (file.type as (typeof ALLOWED_IMAGE_TYPES)[number]),
-          size: prepared?.blob.size ?? file.size,
-        },
-      })
-
-      let nextImage: string
-      if (target.mode === 'r2') {
-        try {
-          const response = await fetch(target.uploadUrl, {
-            method: 'PUT',
-            headers: {
-              'Content-Type': prepared?.contentType ?? file.type,
-            },
-            body: prepared?.blob ?? file,
-          })
-          if (!response.ok) throw new Error('UPLOAD_FAILED')
-          nextImage = target.publicUrl
-        } catch {
-          // Storage hiccup: keep the photo on the profile row instead of
-          // dropping the user's change.
-          if (!prepared) throw new Error('UPLOAD_FAILED')
-          nextImage = prepared.dataUrl
-        }
-      } else {
-        if (!prepared) throw new Error('UPLOAD_FAILED')
-        nextImage = prepared.dataUrl
-      }
-
+      const nextImage = await uploadProfileImage(file, uploadAvatar)
       setAvatarOverride(nextImage)
       profileForm.setFieldValue('image', nextImage)
       toast.success('Foto profil siap disimpan.')

@@ -32,6 +32,7 @@ import {
 } from '#/lib/use-layout-stylesheet'
 import { meOptions } from '#/server/fn/auth'
 import { buttonClass } from '#/components/admin/button'
+import { AdminAvatar } from '#/components/admin/avatar'
 import { StatusBadge } from '#/components/admin/badge'
 import { cn } from '#/lib/utils'
 
@@ -318,16 +319,18 @@ function AdminLayout() {
                   })}
                   aria-haspopup="menu"
                   aria-expanded={userMenuOpen}
+                  aria-label={`Menu pengguna ${user.name}`}
                   onClick={() => setUserMenuOpen((open) => !open)}
                 >
                   <span className="hidden font-medium sm:inline">
                     {user.name}
                   </span>
-                  <span className="avatar avatar--sm avatar--circle">
-                    <span className="avatar__fallback">
-                      {initialsOf(user.name)}
-                    </span>
-                  </span>
+                  <AdminAvatar
+                    src={user.image}
+                    alt=""
+                    fallback={initialsOf(user.name)}
+                    className="avatar--sm avatar--circle"
+                  />
                   <ChevronDown aria-hidden="true" />
                 </button>
                 <div

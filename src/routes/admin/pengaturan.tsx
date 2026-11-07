@@ -8,7 +8,16 @@ import {
 import { useServerFn } from '@tanstack/react-start'
 import { useState } from 'react'
 import { toast } from 'sonner'
-import { Clock3, Mail, MapPin, Phone, Save, Share2 } from 'lucide-react'
+import {
+  Camera,
+  Clock3,
+  Mail,
+  MapPin,
+  Phone,
+  Save,
+  Share2,
+  Trash2,
+} from 'lucide-react'
 import {
   siteSettingsOptions,
   updateAdminProfile,
@@ -17,8 +26,11 @@ import {
 import type { SiteSettings, SiteSettingsInput } from '#/server/fn/settings'
 import { meOptions } from '#/server/fn/auth'
 import type { SessionUser } from '#/server/fn/auth'
+import { ALLOWED_IMAGE_TYPES, getAvatarUploadUrl } from '#/server/fn/storage'
+import { avatarFileError, uploadProfileImage } from '#/lib/avatar'
 import { queryKeys } from '#/lib/query-keys'
 import { formatDateTime } from '#/lib/format'
+import { cn } from '#/lib/utils'
 import {
   openingHoursLine,
   openingHoursWithZone,
@@ -26,6 +38,7 @@ import {
 } from '#/lib/site-settings'
 import { AdminPage } from '#/components/admin/page'
 import { AdminCard } from '#/components/admin/card'
+import { AdminAvatar } from '#/components/admin/avatar'
 import { Field } from '#/components/admin/field'
 import { AdminButton } from '#/components/admin/button'
 
@@ -45,8 +58,12 @@ function errorText(error: unknown): string {
     return 'Email itu sudah dipakai akun lain.'
   if (raw.includes('AKSES_DITOLAK'))
     return 'Akses ditolak. Silakan masuk ulang sebagai admin.'
+  if (raw.includes('URL foto tidak valid'))
+    return 'URL foto tidak valid. Coba unggah ulang fotonya.'
   return raw || 'Gagal menyimpan. Coba lagi.'
 }
+
+const ACCEPTED_IMAGE_TYPES = ALLOWED_IMAGE_TYPES.join(',')
 
 function PengaturanPage() {
   const { data: settings } = useSuspenseQuery(siteSettingsOptions)
@@ -71,12 +88,17 @@ function ProfileCard({ user }: { user: SessionUser }) {
   const queryClient = useQueryClient()
   const router = useRouter()
   const saveProfile = useServerFn(updateAdminProfile)
+  const uploadAvatar = useServerFn(getAvatarUploadUrl)
   const [name, setName] = useState(user.name)
   const [email, setEmail] = useState(user.email)
   const [phone, setPhone] = useState(user.phone ?? '')
+  // `null` = tanpa foto. Berubah lokal dulu, ikut tersimpan saat "Simpan profil"
+  // supaya foto & data diri diperbarui dalam satu langkah.
+  const [image, setImage] = useState<string | null>(user.image)
+  const [avatarBusy, setAvatarBusy] = useState(false)
 
   const mutation = useMutation({
-    mutationFn: () => saveProfile({ data: { name, email, phone } }),
+    mutationFn: () => saveProfile({ data: { name, email, phone, image } }),
     onSuccess: async (saved) => {
       queryClient.setQueryData<SessionUser | null>(
         queryKeys.me(),
@@ -87,6 +109,7 @@ function ProfileCard({ user }: { user: SessionUser }) {
                 name: saved.name,
                 email: saved.email,
                 phone: saved.phone,
+                image: saved.image,
               }
             : previous,
       )
@@ -97,7 +120,25 @@ function ProfileCard({ user }: { user: SessionUser }) {
     onError: (error) => toast.error(errorText(error)),
   })
 
-  const initial = user.name.trim().slice(0, 1).toUpperCase() || '?'
+  async function handleAvatarFile(file: File | undefined) {
+    if (!file) return
+    const rejected = avatarFileError(file)
+    if (rejected) {
+      toast.error(rejected)
+      return
+    }
+    setAvatarBusy(true)
+    try {
+      setImage(await uploadProfileImage(file, uploadAvatar))
+      toast.success('Foto siap — klik “Simpan profil” untuk menyimpannya.')
+    } catch {
+      toast.error('Gagal mengunggah foto. Coba lagi.')
+    } finally {
+      setAvatarBusy(false)
+    }
+  }
+
+  const initial = name.trim().slice(0, 1).toUpperCase() || '?'
 
   return (
     <AdminCard
@@ -112,15 +153,59 @@ function ProfileCard({ user }: { user: SessionUser }) {
           mutation.mutate()
         }}
       >
-        <div className="mb-5 flex items-center gap-3">
-          <span className="grid size-12 shrink-0 place-items-center rounded-full bg-primary text-lg font-semibold text-primary-foreground">
-            {initial}
-          </span>
+        <div className="mb-5 flex flex-wrap items-center gap-4">
+          <div className="relative shrink-0">
+            <label className="block cursor-pointer" title="Ganti foto profil">
+              <AdminAvatar
+                src={image}
+                alt={`Foto profil ${name || user.name}`}
+                fallback={initial}
+                className="avatar--xl avatar--circle"
+              />
+              <span
+                className={cn(
+                  'absolute -bottom-1 -right-1 flex size-7 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-sm',
+                  avatarBusy && 'pointer-events-none opacity-60',
+                )}
+              >
+                <Camera className="size-3.5" aria-hidden="true" />
+              </span>
+              <input
+                type="file"
+                className="sr-only"
+                accept={ACCEPTED_IMAGE_TYPES}
+                disabled={avatarBusy}
+                onChange={(event) => {
+                  const file = event.target.files?.[0]
+                  // Kosongkan supaya file yang sama bisa dipilih lagi.
+                  event.target.value = ''
+                  void handleAvatarFile(file)
+                }}
+              />
+            </label>
+          </div>
           <div className="min-w-0">
-            <p className="truncate text-sm font-semibold">{user.name}</p>
-            <p className="truncate text-xs text-muted-foreground">
-              {user.email}
+            <p className="truncate text-sm font-semibold">
+              {name || user.name}
             </p>
+            <p className="truncate text-xs text-muted-foreground">
+              {email || user.email}
+            </p>
+            <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
+              <span>JPG, PNG, atau WebP · maks 5 MB</span>
+              {image ? (
+                <button
+                  type="button"
+                  className="inline-flex items-center gap-1 font-medium text-foreground hover:underline"
+                  onClick={() => setImage(null)}
+                >
+                  <Trash2 className="size-3" aria-hidden="true" />
+                  Hapus foto
+                </button>
+              ) : (
+                <span>Foto disimpan bersama data profil di bawah.</span>
+              )}
+            </div>
           </div>
         </div>
 

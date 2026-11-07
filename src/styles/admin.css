@@ -65,6 +65,71 @@
   text-transform: uppercase;
   color: var(--color-muted-foreground);
 }
+/* ── Utilities khusus admin ─────────────────────────────────────────────── */
+@utility text-eyebrow {
+  font-size: 0.65rem;
+  font-weight: 500;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--color-muted-foreground);
+}
+
+/* ── Gaya khusus Admin Atribut & Kamus ─────────────────────────────────────── */
+
+/* Kartu yang lebih baik untuk bagian atribut dan kamus */
+.card--attribute,
+.card--dictionary {
+  border: 1px solid var(--color-border);
+  transition: all 0.2s var(--admin-ease);
+}
+
+.card--attribute:hover,
+.card--dictionary:hover {
+  border-color: var(--color-border-strong);
+  box-shadow: 0 4px 12px rgb(17 24 39 / 0.08);
+}
+
+/* Judul bagian yang lebih baik */
+.page__section-title {
+  font-size: 1.125rem;
+  font-weight: 600;
+  color: var(--color-foreground);
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.page__section-title::before {
+  content: "";
+  width: 3px;
+  height: 1.25rem;
+  background: linear-gradient(to bottom, var(--color-primary), var(--color-muted-foreground));
+  border-radius: 2px;
+}
+
+/* Gaya sel tabel yang lebih baik */
+.table tbody tr {
+  transition: all 0.15s var(--admin-ease);
+}
+
+.table tbody tr:hover {
+  background-color: color-mix(in oklch, var(--color-surface-2) 60%, transparent);
+}
+
+.table thead th {
+  font-weight: 600;
+  color: var(--color-muted-foreground);
+  font-size: 0.875rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  border-bottom: 2px solid var(--color-border);
+  padding: 1rem;
+}
+
+.table tbody td {
+  padding: 1rem;
+  vertical-align: middle;
+}
 
 /* ── App shell: sidebar kiri + kolom main ──────────────────────────────── */
 .admin-shell {
@@ -450,35 +515,195 @@
   font-size: 0.6875rem;
   color: var(--color-muted-foreground);
 }
-.admin-product-thumb {
-  display: block;
-  width: 2.75rem;
-  height: 2.75rem;
+/* ── Daftar produk: kolom identitas dengan nama panjang ─────────────────
+ * Nama produk bisa sangat panjang ("Tenda Dome 4 Orang Double Layer Anti
+ * Badai"). Agar grid tidak berantakan: tiap kolom punya lebar terkendali,
+ * sel identitas flex dengan `min-width: 0`, dan nama dipotong 2 baris. */
+.admin-col-product {
+  width: 38%;
+  min-width: 15rem;
+  max-width: 30rem;
+}
+.admin-col-money {
+  width: 9.5rem;
+  text-align: right;
+}
+.admin-col-stock {
+  width: 8.5rem;
+}
+.admin-col-status {
+  width: 8rem;
+}
+.admin-col-actions {
+  width: 1%;
+  text-align: right;
+  white-space: nowrap;
+}
+.admin-product {
+  display: flex;
+  align-items: center;
+  gap: calc(var(--spacing) * 3);
+  min-width: 0;
+}
+.admin-product__thumb {
+  flex: 0 0 auto;
+  width: 3rem;
+  height: 3rem;
   border-radius: 12px;
   object-fit: cover;
   background: var(--color-surface-2);
   box-shadow: inset 0 0 0 1px var(--color-border);
+  transition: box-shadow 240ms var(--admin-ease);
 }
-.admin-product-thumb--empty {
+.admin-product__thumb--empty {
   display: grid;
   place-items: center;
   color: var(--color-muted-foreground);
 }
+.admin-content .table tr:hover .admin-product__thumb {
+  box-shadow: inset 0 0 0 1px var(--color-border-strong);
+}
+.admin-product__body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  min-width: 0;
+}
+.admin-product__name {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+  overflow-wrap: anywhere;
+  font-size: 0.875rem;
+  font-weight: 600;
+  line-height: 1.35;
+  letter-spacing: -0.01em;
+  color: var(--color-foreground);
+  text-decoration: none;
+}
+.admin-product__name:hover {
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.admin-product__name:focus-visible {
+  outline: 2px solid var(--color-ring);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+.admin-product__meta {
+  display: flex;
+  align-items: center;
+  gap: calc(var(--spacing) * 2);
+  min-width: 0;
+  font-size: 0.6875rem;
+  color: var(--color-muted-foreground);
+}
+.admin-product__category {
+  flex: 0 0 auto;
+  padding: 0.1rem 0.45rem;
+  border: 1px solid var(--color-border);
+  border-radius: 999px;
+  font-weight: 500;
+  white-space: nowrap;
+}
+.admin-product__slug {
+  min-width: 0;
+  overflow: hidden;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.625rem;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  opacity: 0.75;
+}
+
+/* Harga: nilai utama + keterangan sewa */
+.admin-money {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.15rem;
+}
+.admin-money__value {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  font-variant-numeric: tabular-nums;
+}
+.admin-money__note {
+  font-size: 0.6875rem;
+  color: var(--color-muted-foreground);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Stok: angka + meter tipis (skala tampilan 20 unit) + status menipis/habis */
 .admin-stock {
-  display: inline-flex;
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  min-width: 5.5rem;
+}
+.admin-stock__head {
+  display: flex;
   align-items: baseline;
   gap: calc(var(--spacing) * 1);
 }
 .admin-stock__num {
+  font-size: 0.875rem;
   font-weight: 600;
+  line-height: 1;
   font-variant-numeric: tabular-nums;
 }
 .admin-stock__unit {
-  font-size: 0.75rem;
+  font-size: 0.6875rem;
   color: var(--color-muted-foreground);
 }
-.admin-stock--low .admin-stock__num {
+.admin-stock__meter {
+  display: block;
+  height: 3px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: var(--color-surface-3);
+}
+.admin-stock__fill {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--color-foreground);
+  transition: width 320ms var(--admin-ease);
+}
+.admin-stock__meta {
+  font-size: 0.6875rem;
+  color: var(--color-muted-foreground);
+  white-space: nowrap;
+}
+.admin-stock[data-level='low'] .admin-stock__num,
+.admin-stock[data-level='low'] .admin-stock__meta {
   color: var(--color-warning-emphasis);
+}
+.admin-stock[data-level='low'] .admin-stock__fill {
+  background: var(--color-warning-emphasis);
+}
+.admin-stock[data-level='out'] .admin-stock__num,
+.admin-stock[data-level='out'] .admin-stock__meta {
+  color: var(--color-danger-emphasis);
+}
+.admin-stock[data-level='out'] .admin-stock__fill {
+  background: var(--color-danger-emphasis);
+}
+
+/* Status: badge utama + deret badge mode transaksi */
+.admin-status-stack {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.35rem;
+}
+.admin-status-stack__row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.25rem;
 }
 .admin-row-actions {
   display: flex;
@@ -702,4 +927,321 @@
   background: color-mix(in oklch, var(--color-surface) 88%, transparent);
   backdrop-filter: blur(8px);
   border-top: var(--st-border-width) solid var(--color-border);
+}
+
+/* ── Daftar produk (layar sempit) ────────────────────────────────────────
+ * Nama produk tetap dua baris; slug disembunyikan dan kolom lain dirapatkan
+ * supaya tombol aksi tidak terdorong keluar kartu. */
+@media (max-width: 47.99rem) {
+  .admin-col-product {
+    width: auto;
+    min-width: 12rem;
+  }
+  .admin-col-money {
+    width: 8rem;
+  }
+  .admin-col-stock {
+    width: 7rem;
+  }
+  .admin-product {
+    gap: calc(var(--spacing) * 2);
+  }
+  .admin-product__thumb {
+    width: 2.5rem;
+    height: 2.5rem;
+    border-radius: 10px;
+  }
+  .admin-product__slug {
+    display: none;
+  }
+}
+
+/* ── Dropdown (select) ─────────────────────────────────────────────────────
+ * Native <option> tidak bisa digayakan, jadi SelectInput merender tombol
+ * `.select__trigger` + panel `.select__popup` milik Stisla dengan state React
+ * (tanpa @stisla/vanilla). Bagian ini hanya memperhalus bentuk & transisinya. */
+.admin-select {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.admin-select__trigger {
+  --select-indicator: none;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: calc(var(--spacing) * 2);
+  width: 100%;
+  padding-inline: calc(var(--spacing) * 3.5);
+  font-weight: 500;
+  text-align: start;
+  box-shadow: 0 1px 1px rgb(17 24 39 / 0.04);
+  transition:
+    border-color 200ms var(--admin-ease),
+    box-shadow 200ms var(--admin-ease),
+    background-color 200ms var(--admin-ease);
+}
+.admin-select__trigger:hover:not(:disabled) {
+  background-color: color-mix(
+    in oklch,
+    var(--color-surface) 94%,
+    var(--color-surface-3)
+  );
+}
+.admin-select__trigger[aria-expanded='true'] {
+  border-color: color-mix(in oklch, var(--color-border-strong) 55%, var(--color-foreground));
+  box-shadow: 0 0 0 3px color-mix(in oklch, var(--color-ring) 10%, transparent);
+}
+.admin-select__chevron {
+  flex: 0 0 auto;
+  width: 1rem;
+  height: 1rem;
+  color: var(--color-muted-foreground);
+  transition:
+    transform 220ms var(--admin-ease),
+    color 200ms var(--admin-ease);
+}
+.admin-select__trigger[aria-expanded='true'] .admin-select__chevron {
+  transform: rotate(180deg);
+  color: var(--color-foreground);
+}
+.admin-select__popup {
+  --select-radius: 0.875rem;
+  --select-popup-padding-inline: calc(var(--spacing) * 1.5);
+  --select-popup-padding-block: calc(var(--spacing) * 1.5);
+  --select-item-padding-inline: calc(var(--spacing) * 2.5);
+  top: calc(100% + 0.375rem);
+  left: 0;
+  width: 100%;
+  max-height: 17rem;
+  z-index: 60;
+  box-shadow:
+    0 1px 2px rgb(17 24 39 / 0.06),
+    0 24px 48px -26px rgb(17 24 39 / 0.42);
+  animation: admin-select-pop 170ms var(--admin-ease);
+}
+.admin-select__item {
+  font-size: 0.8125rem;
+  font-weight: 500;
+}
+.admin-select__popup .select__indicator svg {
+  width: 0.875rem;
+  height: 0.875rem;
+}
+/* Terpilih: lebih tegas dari hover, tetap monokrom. */
+.admin-select__popup .select__item[aria-selected='true'] {
+  color: var(--color-foreground);
+  background-color: var(--color-surface-2);
+  font-weight: 600;
+}
+
+/* Badge yang lebih baik */
+.badge {
+  font-weight: 500;
+  padding: 0.25rem 0.75rem;
+  border-radius: 999px;
+  font-size: 0.75rem;
+}
+
+.badge--soft {
+  background-color: color-mix(in oklch, var(--color-muted-foreground) 8%, transparent);
+  color: var(--color-muted-foreground);
+}
+
+.badge--primary {
+  background-color: color-mix(in oklch, var(--color-primary) 10%, transparent);
+  color: var(--color-primary);
+  border: 1px solid color-mix(in oklch, var(--color-primary) 20%, transparent);
+}
+
+.badge--success {
+  background-color: color-mix(in oklch, var(--color-success) 10%, transparent);
+  color: var(--color-success);
+  border: 1px solid color-mix(in oklch, var(--color-success) 20%, transparent);
+}
+
+.badge--warning {
+  background-color: color-mix(in oklch, var(--color-warning) 10%, transparent);
+  color: var(--color-warning);
+  border: 1px solid color-mix(in oklch, var(--color-warning) 20%, transparent);
+}
+
+.badge--danger {
+  background-color: color-mix(in oklch, var(--color-danger) 10%, transparent);
+  color: var(--color-danger);
+  border: 1px solid color-mix(in oklch, var(--color-danger) 20%, transparent);
+}
+
+.badge--info {
+  background-color: color-mix(in oklch, var(--color-info) 10%, transparent);
+  color: var(--color-info);
+  border: 1px solid color-mix(in oklch, var(--color-info) 20%, transparent);
+}
+
+/* Warna khusus untuk jenis istilah */
+.badge-synonym {
+  background-color: color-mix(in oklch, var(--color-primary) 10%, transparent);
+  color: var(--color-primary);
+  border: 1px solid color-mix(in oklch, var(--color-primary) 20%, transparent);
+}
+
+.badge-tag {
+  background-color: color-mix(in oklch, var(--color-info) 10%, transparent);
+  color: var(--color-info);
+  border: 1px solid color-mix(in oklch, var(--color-info) 20%, transparent);
+}
+
+.badge-stopword {
+  background-color: color-mix(in oklch, var(--color-muted-foreground) 10%, transparent);
+  color: var(--color-muted-foreground);
+  border: 1px solid color-mix(in oklch, var(--color-muted-foreground) 20%, transparent);
+}
+@keyframes admin-select-pop {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .admin-select__popup {
+    animation: none;
+  }
+  .admin-select__chevron {
+    transition: none;
+  }
+}
+
+/* Field form yang lebih baik */
+.field__label {
+  font-weight: 500;
+  color: var(--color-foreground);
+  font-size: 0.875rem;
+  margin-bottom: 0.5rem;
+  display: block;
+}
+
+.input {
+  border-radius: 0.5rem;
+  border: 1px solid var(--color-border);
+  padding: 0.625rem 1rem;
+  font-size: 0.875rem;
+  transition: all 0.2s var(--admin-ease);
+  background-color: var(--color-surface);
+}
+
+.input:focus {
+  outline: none;
+  border-color: var(--color-ring);
+  box-shadow: 0 0 0 3px color-mix(in oklch, var(--color-ring) 10%, transparent);
+}
+
+.input::placeholder {
+  color: var(--color-muted-foreground);
+  opacity: 0.7;
+}
+
+/* Tombol yang lebih baik */
+.button {
+  border-radius: 0.5rem;
+  font-weight: 500;
+  transition: all 0.2s var(--admin-ease);
+  position: relative;
+  overflow: hidden;
+}
+
+.button--primary {
+  background: linear-gradient(135deg, var(--color-primary), var(--color-foreground));
+  border: none;
+  color: var(--color-primary-foreground);
+  box-shadow: 0 2px 6px rgb(17 24 39 / 0.15);
+}
+
+.button--primary:hover:not(:disabled) {
+}
+
+.button--primary:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+.button--primary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.button--outline {
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-border);
+  color: var(--color-foreground);
+}
+
+.button--outline:hover:not(:disabled) {
+  background-color: var(--color-surface-2);
+  border-color: var(--color-border-strong);
+}
+
+.button--soft {
+  background-color: var(--color-surface-2);
+  border: 1px solid var(--color-border);
+  color: var(--color-foreground);
+}
+
+.button--soft:hover:not(:disabled) {
+  background-color: color-mix(in oklch, var(--color-surface-2) 80%, var(--color-primary));
+}
+
+.button--danger {
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-danger);
+  color: var(--color-danger);
+}
+
+.button--danger:hover:not(:disabled) {
+  background-color: color-mix(in oklch, var(--color-danger) 5%, transparent);
+}
+
+/* Efek fokus yang lebih baik */
+:focus-visible {
+  outline: 2px solid var(--color-ring);
+  outline-offset: 2px;
+}
+
+/* Formulir tambah istilah yang lebih baik */
+#term-form {
+  background: linear-gradient(to bottom, var(--color-surface), var(--color-surface-2));
+  border-radius: 0.75rem;
+  padding: 1.5rem;
+  margin-top: 1.5rem;
+  border: 1px solid var(--color-border);
+}
+
+/* Tambahan warna untuk tombol tindakan */
+.button--add {
+  background: linear-gradient(135deg, var(--color-success), var(--color-primary));
+  border: none;
+  color: white;
+}
+
+.button--add:hover:not(:disabled) {
+  box-shadow: 0 4px 12px rgb(17 24 39 / 0.25);
+}
+
+.button--edit {
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-info);
+  color: var(--color-info);
+}
+
+.button--edit:hover:not(:disabled) {
+  background-color: color-mix(in oklch, var(--color-info) 5%, transparent);
+}
+
+.button--delete {
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-danger);
+  color: var(--color-danger);
+}
+
+.button--delete:hover:not(:disabled) {
+  background-color: color-mix(in oklch, var(--color-danger) 5%, transparent);
 }

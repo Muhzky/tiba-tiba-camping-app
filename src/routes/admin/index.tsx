@@ -220,7 +220,7 @@ function OverviewPage() {
 
   if (!data) return null
 
-  const firstName = me?.name.trim().split(/\s+/)[0] ?? 'Admin'
+  const fullName = me?.name ?? 'Admin'
   const periodTitle =
     period === 'today'
       ? 'Pendapatan hari ini'
@@ -232,7 +232,7 @@ function OverviewPage() {
 
   return (
     <AdminPage
-      title={`Halo, ${firstName}`}
+      title={`Halo, ${fullName}`}
       description="Ringkasan operasional Tiba Tiba Camping hari ini."
     >
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
@@ -480,11 +480,11 @@ function OverviewPage() {
  */
 function OverviewSkeleton() {
   const { data: me } = useQuery(meOptions)
-  const firstName = me?.name.trim().split(/\s+/)[0] ?? 'Admin'
+  const fullName = me?.name ?? 'Admin'
 
   return (
     <AdminPage
-      title={`Halo, ${firstName}`}
+      title={`Halo, ${fullName}`}
       description="Ringkasan operasional Tiba Tiba Camping hari ini."
     >
       <p className="sr-only" role="status">

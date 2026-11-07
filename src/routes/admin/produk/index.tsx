@@ -11,7 +11,6 @@ import {
 } from '#/server/fn/admin'
 import { imageUrl } from '#/server/fn/product'
 import { rupiah } from '#/lib/format'
-import { cn } from '#/lib/utils'
 import { AdminPage } from '#/components/admin/page'
 import { AdminCard } from '#/components/admin/card'
 import { AdminTable } from '#/components/admin/table'
@@ -56,64 +55,85 @@ function ProdukListPage() {
     data: data?.rows ?? [],
     columns: [
       {
-        id: 'gambar',
-        header: 'Gambar',
-        meta: { className: 'hidden md:table-cell' },
-        cell: ({ row }) =>
-          row.original.imageKey ? (
-            <img
-              src={imageUrl(row.original.imageKey)}
-              alt=""
-              width={44}
-              height={44}
-              className="admin-product-thumb"
-            />
-          ) : (
-            <span className="admin-product-thumb admin-product-thumb--empty" aria-hidden="true">
-              <Package className="size-5" />
-            </span>
-          ),
-      },
-      {
-        id: 'nama',
-        header: 'Nama',
-        cell: ({ row }) => (
-          <>
-            <div className="font-medium">{row.original.name}</div>
-            <div className="admin-cell-meta">{row.original.categoryName}</div>
-          </>
-        ),
+        id: 'produk',
+        header: 'Produk',
+        meta: { className: 'admin-col-product' },
+        cell: ({ row }) => {
+          const { name, slug, categoryName, imageKey, id } = row.original
+          return (
+            <div className="admin-product">
+              {imageKey ? (
+                <img
+                  src={imageUrl(imageKey)}
+                  alt=""
+                  width={48}
+                  height={48}
+                  loading="lazy"
+                  className="admin-product__thumb"
+                />
+              ) : (
+                <span className="admin-product__thumb admin-product__thumb--empty" aria-hidden="true">
+                  <Package className="size-4" />
+                </span>
+              )}
+              <div className="admin-product__body">
+                <Link
+                  to="/admin/produk/form"
+                  search={{ id }}
+                  title={name}
+                  className="admin-product__name"
+                >
+                  {name}
+                </Link>
+                <div className="admin-product__meta">
+                  <span className="admin-product__category">{categoryName}</span>
+                  <span className="admin-product__slug" title={slug}>
+                    {slug}
+                  </span>
+                </div>
+              </div>
+            </div>
+          )
+        },
       },
       {
         id: 'harga',
-        header: 'Harga jual',
-        meta: { className: 'text-right' },
-        cell: ({ row }) => <span className="font-medium">{rupiah(row.original.salePrice)}</span>,
+        header: 'Harga',
+        meta: { className: 'admin-col-money' },
+        cell: ({ row }) => (
+          <div className="admin-money">
+            <span className="admin-money__value">{rupiah(row.original.salePrice)}</span>
+            <span className="admin-money__note">
+              {row.original.rentPricePerDay
+                ? `Sewa ${rupiah(row.original.rentPricePerDay)}/hari`
+                : 'Tanpa sewa'}
+            </span>
+          </div>
+        ),
       },
       {
-        id: 'sewa',
-        header: 'Sewa/hari',
-        meta: { className: 'text-right' },
-        cell: ({ row }) =>
-          row.original.rentPricePerDay ? (
-            <span className="font-medium">{rupiah(row.original.rentPricePerDay)}</span>
-          ) : (
-            <span className="text-muted-foreground">—</span>
-          ),
-      },
-      {
-        id: 'varian',
-        header: 'Varian / Stok',
-        meta: { className: 'text-right' },
+        id: 'stok',
+        header: 'Stok',
+        meta: { className: 'admin-col-stock' },
         cell: ({ row }) => {
-          const stock = row.original.totalStock
+          const { totalStock: stock, variantCount } = row.original
+          const level = stock === 0 ? 'out' : stock <= 3 ? 'low' : 'ok'
           return (
-            <div className="flex flex-col items-end gap-0.5">
-              <span className={cn('admin-stock', stock <= 3 && 'admin-stock--low')}>
+            <div className="admin-stock" data-level={level}>
+              <div className="admin-stock__head">
                 <span className="admin-stock__num">{stock}</span>
-                <span className="admin-stock__unit">stok</span>
+                <span className="admin-stock__unit">unit</span>
+              </div>
+              <span className="admin-stock__meter" aria-hidden="true">
+                <span
+                  className="admin-stock__fill"
+                  style={{ width: `${Math.min(100, (stock / 20) * 100)}%` }}
+                />
               </span>
-              <span className="admin-cell-meta">{row.original.variantCount} varian</span>
+              <span className="admin-stock__meta">
+                {variantCount} varian
+                {level === 'out' ? ' · habis' : level === 'low' ? ' · menipis' : ''}
+              </span>
             </div>
           )
         },
@@ -121,26 +141,32 @@ function ProdukListPage() {
       {
         id: 'status',
         header: 'Status',
+        meta: { className: 'admin-col-status' },
         cell: ({ row }) => (
-          <div className="flex flex-wrap gap-1">
+          <div className="admin-status-stack">
             <StatusBadge tone={row.original.isActive ? 'success' : 'neutral'}>
               {row.original.isActive ? 'Aktif' : 'Nonaktif'}
             </StatusBadge>
-            {row.original.isPreorder ? <StatusBadge tone="warning">PO</StatusBadge> : null}
-            {row.original.isRentable ? <StatusBadge tone="info">Sewa</StatusBadge> : null}
+            <div className="admin-status-stack__row">
+              {row.original.isPreorder ? <StatusBadge tone="warning">PO</StatusBadge> : null}
+              {row.original.isRentable ? <StatusBadge tone="info">Sewa</StatusBadge> : null}
+              {!row.original.isPreorder && !row.original.isRentable ? (
+                <span className="admin-cell-meta">Beli</span>
+              ) : null}
+            </div>
           </div>
         ),
       },
       {
         id: 'aksi',
         header: 'Aksi',
-        meta: { className: 'text-right' },
+        meta: { className: 'admin-col-actions' },
         cell: ({ row }) => (
           <div className="admin-row-actions">
             <Link
               to="/admin/produk/form"
               search={{ id: row.original.id }}
-              className={buttonClass({ variant: 'primary', size: 'sm' })}
+              className={buttonClass({ variant: 'outline', size: 'sm' })}
             >
               <Pencil aria-hidden="true" />
               Edit

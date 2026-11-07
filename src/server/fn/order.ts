@@ -23,6 +23,7 @@ export type MyOrder = {
   createdAt: Date
   rentStart: Date | null
   rentEnd: Date | null
+  trackingNo: string | null
 }
 
 export const getMyOrders = createServerFn({ method: 'GET' }).handler(
@@ -37,6 +38,7 @@ export const getMyOrders = createServerFn({ method: 'GET' }).handler(
         paymentStatus: orders.paymentStatus,
         grandTotal: orders.grandTotal,
         createdAt: orders.createdAt,
+        trackingNo: orders.trackingNo,
         itemCount: sql<number>`coalesce(sum(${orderItems.qty}), 0)`,
         rentStart: sql<Date | null>`min(${orderItems.rentStart})`,
         rentEnd: sql<Date | null>`max(${orderItems.rentEnd})`,
