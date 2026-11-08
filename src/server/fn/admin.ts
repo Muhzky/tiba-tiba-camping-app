@@ -535,6 +535,34 @@ export const resetUserPassword = createServerFn({ method: 'POST' })
     return { ok: true as const }
   })
 
+export const deleteUserSchema = z.object({
+  userId: z.uuid(),
+})
+
+export const deleteUser = createServerFn({ method: 'POST' })
+  .validator((input: z.infer<typeof deleteUserSchema>) => deleteUserSchema.parse(input))
+  .handler(async ({ data }) => {
+    const actor = await requireAdmin()
+    if (actor.id === data.userId)
+      throw new Error('TIDAK_BISA_UBAH_DIRI_SENDIRI')
+    const [target] = await db
+      .select({ id: users.id, role: users.role })
+      .from(users)
+      .where(eq(users.id, data.userId))
+      .limit(1)
+    if (!target) throw new Error('USER_TIDAK_DITEMUKAN')
+    // Akun admin terakhir tidak boleh terhapus — admin selanjutnya tak bisa masuk.
+    if (target.role === 'admin') {
+      const [total] = await db.select({ n: count() }).from(users).where(eq(users.role, 'admin'))
+      if (Number(total?.n ?? 0) <= 1) throw new Error('ADMIN_TERAKHIR')
+    }
+    // Sesi/akun/alamat/keranjang ikut lewat onDelete: cascade;
+    // pesanan tersimpan dengan user_id = null (onDelete: set null).
+    await db.delete(users).where(eq(users.id, data.userId))
+    await audit(actor.id, 'user.delete', 'user', data.userId)
+    return { ok: true as const }
+  })
+
 // ── Produk ───────────────────────────────────────────────────────────────────
 
 export const adminProductsSchema = z.object({

@@ -748,6 +748,21 @@
         )
         100% 0 / 0.75rem 100% no-repeat scroll;
   }
+
+  /* Footer kartu (keterangan "Menampilkan …" + tombol halaman): tetap satu baris
+   * di layar sempit (mis. iPhone 15, 393px) — keterangan boleh menyusut & menutup
+   * ke baris berikutnya di kolomnya sendiri, sedangkan deretan chip pagination
+   * dilarang menyusut (nowrap) supaya '>' tidak pernah turun dari sejajar '<'. */
+  .admin-content .card__footer > span {
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+  .admin-content .card__footer > nav {
+    flex: 0 0 auto;
+  }
+  .admin-content .card__footer .pagination {
+    flex-wrap: nowrap;
+  }
 }
 
 /* ── Deret metrik ringkas (mis. halaman Rekomendasi) ──────────────────── */

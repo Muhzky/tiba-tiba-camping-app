@@ -21,20 +21,26 @@ type Env = z.infer<typeof EnvSchema>
 
 // Nilai publik yang aman di bundler client (dari .env dengan prefix VITE_).
 // Field rahasia sengaja dikosongkan — secret tidak pernah masuk client.
+// `import.meta.env` hanya terdefinisi di bundler Vite; di Node (tsx, seeder) ia
+// tidak terdefinisi di Node, jadi akses lewat cast eksplisit.
+type ViteEnvMap = Record<string, string | undefined>
+const viteEnv: ViteEnvMap =
+  (import.meta as unknown as { env?: ViteEnvMap }).env ?? {}
 const clientEnv: Env = {
   DATABASE_URL: '',
   AUTH_SECRET: '',
-  APP_URL: import.meta.env.VITE_APP_URL ?? '',
+  APP_URL: viteEnv.VITE_APP_URL ?? '',
   MIDTRANS_SERVER_KEY: '',
-  MIDTRANS_CLIENT_KEY: import.meta.env.VITE_MIDTRANS_CLIENT_KEY ?? '',
-  MIDTRANS_IS_PRODUCTION: import.meta.env.VITE_MIDTRANS_IS_PRODUCTION === 'true',
+  MIDTRANS_CLIENT_KEY: viteEnv.VITE_MIDTRANS_CLIENT_KEY ?? '',
+  MIDTRANS_IS_PRODUCTION: viteEnv.VITE_MIDTRANS_IS_PRODUCTION === 'true',
   R2_ACCOUNT_ID: '',
   R2_ACCESS_KEY_ID: '',
   R2_SECRET_ACCESS_KEY: '',
   R2_BUCKET: '',
-  R2_PUBLIC_URL: import.meta.env.VITE_R2_PUBLIC_URL ?? '',
+  R2_PUBLIC_URL: viteEnv.VITE_R2_PUBLIC_URL ?? '',
 }
 
 // Server-only: validated once at boot (nitro runtime). Browser: nilai publik.
 // `document` lebih andal dari `process` — dev client punya polyfill `process`.
-export const env: Env = typeof document === 'undefined' ? EnvSchema.parse(process.env) : clientEnv
+export const env: Env =
+  typeof document === 'undefined' ? EnvSchema.parse(process.env) : clientEnv

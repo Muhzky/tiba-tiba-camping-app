@@ -17,6 +17,7 @@
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
     "db:seed": "node --env-file=.env --import tsx src/server/db/seed.ts",
+    "db:seed:produk-demo": "node --env-file=.env --import tsx src/server/db/seed-products-demo.ts",
     "db:setup": "drizzle-kit generate && drizzle-kit migrate && node --env-file=.env --import tsx src/server/db/seed.ts",
     "test": "vitest run"
   },

@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 800" role="img" aria-label="Sleeping bag mummy hangat">
+  <rect width="800" height="800" fill="#f5f6f8"/>
+  <circle cx="400" cy="400" r="270" fill="#e8ebef"/>
+  <ellipse cx="400" cy="596" rx="230" ry="24" fill="#dbe0e6"/>
+  <!-- badan sleeping bag (mummy, meruncing ke bawah) -->
+  <path d="M318 268 Q400 226 482 268 Q520 320 512 420 Q506 512 470 588 Q400 604 330 588 Q294 512 288 420 Q280 320 318 268 Z" fill="#3F6212"/>
+  <!-- panel samping -->
+  <path d="M452 258 Q520 320 512 420 Q506 512 470 588 L430 596 Q478 500 468 372 Q462 300 440 262 Z" fill="#34500e"/>
+  <!-- tepi ritsleting -->
+  <line x1="352" y1="270" x2="352" y2="580" stroke="#2b410b" stroke-width="14" stroke-linecap="round"/>
+  <line x1="352" y1="276" x2="352" y2="576" stroke="#d3d7df" stroke-width="4" stroke-dasharray="10 12"/>
+  <!-- hood -->
+  <path d="M360 252 Q400 216 440 252 Q446 268 440 282 Q400 296 360 282 Q354 268 360 252 Z" fill="#2b410b"/>
+  <!-- strap ompresi -->
+  <line x1="308" y1="452" x2="506" y2="452" stroke="#2b410b" stroke-width="12"/>
+  <line x1="316" y1="498" x2="500" y2="498" stroke="#2b410b" stroke-width="12"/>
+</svg>

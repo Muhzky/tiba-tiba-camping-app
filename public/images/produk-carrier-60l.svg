@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 800" role="img" aria-label="Carrier 60L ekspedisi">
+  <rect width="800" height="800" fill="#f5f6f8"/>
+  <circle cx="400" cy="400" r="270" fill="#e8ebef"/>
+  <ellipse cx="400" cy="608" rx="230" ry="24" fill="#dbe0e6"/>
+  <!-- badan tas -->
+  <path d="M312 226 Q400 194 488 226 L520 300 Q546 420 534 546 Q528 600 470 606 Q400 614 330 606 Q272 600 266 546 Q254 420 280 300 Z" fill="#24282f"/>
+  <!-- panel aura depan -->
+  <path d="M352 306 Q400 288 448 306 L462 380 Q470 470 462 540 L400 550 L338 540 Q330 470 338 380 Z" fill="#31363f"/>
+  <!-- akses atas -->
+  <path d="M330 220 Q400 172 470 220 L482 268 Q400 244 318 268 Z" fill="#181b20"/>
+  <!-- handle atas -->
+  <path d="M372 184 Q400 160 428 184" fill="none" stroke="#454b55" stroke-width="14" stroke-linecap="round"/>
+  <!-- belt kompresi horizontal -->
+  <rect x="300" y="418" width="200" height="26" rx="13" fill="#181b20"/>
+  <rect x="300" y="492" width="200" height="26" rx="13" fill="#181b20"/>
+  <rect x="380" y="418" width="40" height="26" rx="8" fill="#6f7680"/>
+  <!-- saku samping ring -->
+  <path d="M488 380 L534 380 Q544 440 536 500 L490 500 Z" fill="#181b20"/>
+  <path d="M312 380 L266 380 Q256 440 264 500 L310 500 Z" fill="#181b20"/>
+  <!-- rain cover pocket bawah -->
+  <rect x="336" y="516" width="128" height="40" rx="14" fill="#454b55"/>
+</svg>

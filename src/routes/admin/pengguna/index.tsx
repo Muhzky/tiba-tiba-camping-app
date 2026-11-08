@@ -3,9 +3,10 @@ import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useServerFn } from '@tanstack/react-start'
 import { useState } from 'react'
 import { toast } from 'sonner'
-import { KeyRound, Power, PowerOff, Users } from 'lucide-react'
+import { KeyRound, Power, PowerOff, Trash2, Users } from 'lucide-react'
 import {
   adminUsersOptions,
+  deleteUser,
   resetUserPassword,
   setUserActive,
   setUserRole,
@@ -31,12 +32,26 @@ const ROLE_LABEL: Record<string, string> = {
   admin: 'Admin',
 }
 
+function errorText(error: unknown): string {
+  const raw = error instanceof Error ? error.message : String(error ?? '')
+  if (raw.includes('AKSES_DITOLAK'))
+    return 'Akses ditolak. Silakan masuk ulang sebagai admin.'
+  if (raw.includes('TIDAK_BISA_UBAH_DIRI_SENDIRI'))
+    return 'Tidak bisa mengubah akunmu sendiri.'
+  if (raw.includes('ADMIN_TERAKHIR'))
+    return 'Akun admin ini tidak bisa dihapus karena satu-satunya admin.'
+  if (raw.includes('USER_TIDAK_DITEMUKAN'))
+    return 'Pengguna sudah tidak ada. Muat ulang daftar.'
+  return 'Gagal. Coba lagi.'
+}
+
 function PenggunaPage() {
   const [q, setQ] = useState('')
   const [page, setPage] = useState(1)
   const [busy, setBusy] = useState(false)
   const [resetFor, setResetFor] = useState<string | null>(null)
   const [newPassword, setNewPassword] = useState('')
+  const [deleteFor, setDeleteFor] = useState<string | null>(null)
 
   const { data, isFetching } = useQuery(adminUsersOptions({ q: q || undefined, page }))
   const me = useQuery(meOptions).data
@@ -45,6 +60,7 @@ function PenggunaPage() {
   const activeFn = useServerFn(setUserActive)
   const roleFn = useServerFn(setUserRole)
   const resetFn = useServerFn(resetUserPassword)
+  const deleteFn = useServerFn(deleteUser)
 
   const isAdmin = me?.role === 'admin'
   const invalidate = async () => {
@@ -58,7 +74,7 @@ function PenggunaPage() {
       await invalidate()
       toast.success(ok)
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : 'Gagal.')
+      toast.error(errorText(err))
     } finally {
       setBusy(false)
     }
@@ -173,10 +189,26 @@ function PenggunaPage() {
                     disabled={busy}
                     onClick={() => {
                       setResetFor(resetFor === u.id ? null : u.id)
+                      setDeleteFor(null)
                       setNewPassword('')
                     }}
                   >
                     <KeyRound aria-hidden="true" />
+                  </AdminButton>
+                  <AdminButton
+                    size="sm"
+                    variant="ghost"
+                    iconOnly
+                    className="text-danger"
+                    title={`Hapus ${u.name}`}
+                    aria-label={`Hapus ${u.name}`}
+                    disabled={busy || me?.id === u.id}
+                    onClick={() => {
+                      setDeleteFor(deleteFor === u.id ? null : u.id)
+                      setResetFor(null)
+                    }}
+                  >
+                    <Trash2 aria-hidden="true" />
                   </AdminButton>
                 </div>
               </td>
@@ -218,6 +250,44 @@ function PenggunaPage() {
                     Batal
                   </AdminButton>
                 </form>
+              </td>
+            </tr>
+          ) : null}
+          {deleteFor ? (
+            <tr>
+              <td colSpan={7} className="bg-surface-2">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <span className="text-sm">
+                    Hapus{' '}
+                    <strong className="font-semibold">
+                      {(data?.rows ?? []).find((u) => u.id === deleteFor)?.name ?? 'pengguna ini'}
+                    </strong>
+                    ? Sesi login dan keranjangnya ikut terhapus; riwayat pesanan tetap tersimpan.
+                  </span>
+                  <div className="admin-row-actions">
+                    <AdminButton
+                      size="sm"
+                      variant="outline"
+                      disabled={busy}
+                      onClick={() => setDeleteFor(null)}
+                    >
+                      Batal
+                    </AdminButton>
+                    <button
+                      type="button"
+                      className={buttonClass({ variant: 'danger', size: 'sm' })}
+                      disabled={busy}
+                      onClick={() =>
+                        void run(async () => {
+                          await deleteFn({ data: { userId: deleteFor } })
+                          setDeleteFor(null)
+                        }, 'Pengguna dihapus.')
+                      }
+                    >
+                      Ya, hapus
+                    </button>
+                  </div>
+                </div>
               </td>
             </tr>
           ) : null}

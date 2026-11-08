@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 800" role="img" aria-label="Tenda dome 4 orang">
+  <rect width="800" height="800" fill="#f5f6f8"/>
+  <circle cx="400" cy="420" r="270" fill="#e8ebef"/>
+  <!-- bayangan lantai -->
+  <ellipse cx="400" cy="590" rx="250" ry="26" fill="#dbe0e6"/>
+  <!-- double layer / flysheet -->
+  <path d="M150 585 Q160 420 400 300 Q640 420 650 585 Q400 610 150 585 Z" fill="#24282f"/>
+  <!-- lipatan lintang flysheet -->
+  <path d="M400 300 Q560 388 596 545 Q470 570 400 570 Z" fill="#31363f"/>
+  <!-- inner tent terlihat di depan -->
+  <path d="M270 585 Q335 440 400 425 Q465 440 530 585 Z" fill="#181b20"/>
+  <path d="M310 585 Q355 470 400 460 Q445 470 490 585 Z" fill="#454b55"/>
+  <!-- tiang silang -->
+  <path d="M400 305 Q560 400 640 545" fill="none" stroke="#8f97a3" stroke-width="10" stroke-linecap="round"/>
+  <path d="M400 305 Q240 400 160 545" fill="none" stroke="#8f97a3" stroke-width="10" stroke-linecap="round"/>
+  <!-- pasak tenda -->
+  <line x1="150" y1="585" x2="128" y2="612" stroke="#6f7680" stroke-width="8" stroke-linecap="round"/>
+  <line x1="650" y1="585" x2="672" y2="612" stroke="#6f7680" stroke-width="8" stroke-linecap="round"/>
+</svg>
